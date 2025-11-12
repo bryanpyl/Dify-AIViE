@@ -5,11 +5,12 @@ type DocumentContextValue = {
   datasetId?: string
   documentId?: string
   docForm?: ChunkingMode
+  mode?: string
   parentMode?: ParentMode
 }
 
 export const DocumentContext = createContext<DocumentContextValue>({})
 
-export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
+export const useDocumentContext = <T>(selector: (value: DocumentContextValue) => T): T => {
   return useContextSelector(DocumentContext, selector)
 }

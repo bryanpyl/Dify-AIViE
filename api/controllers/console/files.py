@@ -66,8 +66,8 @@ class FileApi(Resource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        if source == "datasets" and not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if source == "datasets" and not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         if source not in ("datasets", None):
             source = None

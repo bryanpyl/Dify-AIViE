@@ -25,13 +25,13 @@
 
 
   const originalIframeStyleText = `
-    position: absolute;
+    position: fixed;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     top: unset;
-    right: var(--${buttonId}-right, 1rem); /* Align with dify-chatbot-bubble-button. */
-    bottom: var(--${buttonId}-bottom, 1rem); /* Align with dify-chatbot-bubble-button. */
+    right: var(--${buttonId}-right, 0.85rem); /* Align with dify-chatbot-bubble-button. */
+    bottom: var(--${buttonId}-bottom, 0.85rem); /* Align with dify-chatbot-bubble-button. */
     left: unset;
     width: 24rem;
     max-width: calc(100vw - 2rem);
@@ -194,6 +194,65 @@
       }
     }
 
+    function checkImageValidity (imageUrl){
+      return new Promise ((resolve,reject)=>{
+        const iconImg = new Image(); 
+        iconImg.onload = ()=>{
+          resolve(true)
+        };
+        iconImg.onerror = ()=>{
+          resolve(false)
+        };
+        iconImg.src=imageUrl;
+      })
+    }
+
+    async function loadAvatarImage(){
+      const url = new URL(config.baseUrl);
+      const cleanUrl = `${url.protocol}//${url.hostname}`;
+      const getBaseUrl = ()=>{
+        if (url.hostname.includes('localhost')||url.hostname==='127.0.0.1'){
+          return `${cleanUrl}:5001`
+        }
+        else return cleanUrl
+      }
+
+      const baseUrl = getBaseUrl()
+
+      const accessToken = await fetch(
+        `${baseUrl}/api/passport`,{
+          headers:{
+            'X-App-Code':config.token?config.token:''
+          }
+        }
+      )
+      const data = await accessToken.json();
+      if (data){
+        const siteInfo = await fetch(
+          `${baseUrl}/api/site`,{
+            headers:{
+              'Authorization':`Bearer ${data.access_token}`
+            }
+          }
+        )
+        const site_data = await siteInfo.json();
+        // Test fetch image url: 
+        if (site_data.site.icon_url){
+          // RUN FUNCTION HERE
+          const imgValid = await checkImageValidity(site_data.site.icon_url)
+          if (imgValid){
+            return site_data.site.icon_url
+          }
+          else{
+            return ''
+          }
+
+        }
+        // return site_data.site.icon_url
+      }
+
+    }
+
     function toggleExpand() {
       isExpanded = !isExpanded;
 
@@ -233,7 +292,11 @@
     });
 
     // Function to create the chat button
-    function createButton() {
+    async function createButton() {
+      const iconUrl = await loadAvatarImage()
+
+      const embedWindow = document.createElement('div');
+      embedWindow.id = 'aivie-embed-chatbot-window';
       const containerDiv = document.createElement("div");
       // Apply custom properties from config
       Object.entries(config.containerProps || {}).forEach(([key, value]) => {
@@ -281,9 +344,21 @@
       const displayDiv = document.createElement("div");
       displayDiv.style.cssText =
         "position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 2147483647;";
-      displayDiv.innerHTML = svgIcons;
+      // displayDiv.innerHTML = svgIcons;
+      if (iconUrl){
+        const IconImg = document.createElement('img');
+        IconImg.style.cssText='width:100%;height:100%'
+        IconImg.src = iconUrl
+        displayDiv.appendChild(IconImg)
+      }
+      else{
+        displayDiv.innerHTML = svgIcons.open;
+      }
       containerDiv.appendChild(displayDiv);
-      document.body.appendChild(containerDiv);
+      embedWindow.appendChild(containerDiv);
+      document.body.appendChild(embedWindow);
+
+
 
       // Add click event listener to toggle chatbot
       containerDiv.addEventListener("click", handleClick);
@@ -298,8 +373,8 @@
 
         const targetIframe = document.getElementById(iframeId);
         if (!targetIframe) {
-          containerDiv.appendChild(createIframe());
-          resetIframePosition();
+          containerDiv.style.display='none';
+          embedWindow.appendChild(createIframe());
           this.title = "Exit (ESC)";
           setSvgIcon("close");
           document.addEventListener("keydown", handleEscKey);
@@ -437,14 +512,36 @@
   // Add esc Exit keyboard event triggered
   function handleEscKey(event) {
     if (event.key === "Escape") {
-      const targetIframe = document.getElementById(iframeId);
-      if (targetIframe && targetIframe.style.display !== "none") {
-        targetIframe.style.display = "none";
-        setSvgIcon("open");
-      }
+      handleMinimizeChat()
     }
   }
+
+  function handleMinimizeChat (){
+    const targetIframe = document.getElementById(iframeId);
+    targetIframe.style.display = 'none'
+    const containerDiv = document.getElementById(buttonId);
+    if (containerDiv){
+      containerDiv.style.display=''
+    } 
+  }
   document.addEventListener("keydown", handleEscKey);
+
+  window.addEventListener('message',(event)=>{
+    if (event.data==='CLOSE_IFRAME'){
+      handleMinimizeChat()
+    }
+
+    if (event.data==='IFRAME_LOADED'){
+      const iframe = document.getElementById(iframeId);
+      const chatConfig = config?.chatConfig? config.chatConfig:null
+      const chatWidgetConfig = config?.chatWidgetConfig? config.chatWidgetConfig:null
+      if (chatConfig || chatWidgetConfig){
+        if (iframe?.contentWindow){
+          iframe.contentWindow.postMessage({chatConfig, chatWidgetConfig},'*')
+        }
+      }
+    }
+  })
 
   // Set the embedChatbot function to run when the body is loaded,Avoid infinite nesting
   if (config?.dynamicScript) {

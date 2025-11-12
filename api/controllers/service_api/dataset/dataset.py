@@ -552,7 +552,8 @@ class DatasetTagsApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
-        tags = TagService.get_tags("knowledge", cid)
+        tag_type = request.args.get("type", "group")
+        tags = TagService.get_tags(tag_type, cid)
 
         return tags, 200
 
@@ -575,7 +576,7 @@ class DatasetTagsApi(DatasetApiResource):
             raise Forbidden()
 
         args = tag_create_parser.parse_args()
-        args["type"] = "knowledge"
+        args["type"] = "group"
         tag = TagService.save_tags(args)
 
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
@@ -599,7 +600,7 @@ class DatasetTagsApi(DatasetApiResource):
             raise Forbidden()
 
         args = tag_update_parser.parse_args()
-        args["type"] = "knowledge"
+        args["type"] = "group"
         tag_id = args["tag_id"]
         tag = TagService.update_tags(args, tag_id)
 
@@ -651,7 +652,9 @@ class DatasetTagBindingApi(DatasetApiResource):
             raise Forbidden()
 
         args = tag_binding_parser.parse_args()
-        args["type"] = "knowledge"
+        args["type"] = "group"
+        args["subtype"] = "knowledge"
+
         TagService.save_tag_binding(args)
 
         return 204
@@ -677,7 +680,8 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             raise Forbidden()
 
         args = tag_unbinding_parser.parse_args()
-        args["type"] = "knowledge"
+        args["type"] = "group"
+        args["subtype"] = "knowledge"
         TagService.delete_tag_binding(args)
 
         return 204
@@ -700,7 +704,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         dataset_id = kwargs.get("dataset_id")
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        tags = TagService.get_tags_by_target_id("knowledge", current_user.current_tenant_id, str(dataset_id))
+        tag_type = request.args.get("type", "group")
+        tags = TagService.get_tags_by_target_id(tag_type, current_user.current_tenant_id, str(dataset_id))
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
         response = {"data": tags_list, "total": len(tags)}
         return response, 200

@@ -14,6 +14,7 @@ import ActionButton from '@/app/components/base/action-button'
 type Props = {
   content: string
   className?: string
+  selectorId?: string
 }
 
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'

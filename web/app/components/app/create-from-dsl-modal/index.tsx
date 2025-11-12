@@ -28,6 +28,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { noop } from 'lodash-es'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -45,6 +46,7 @@ export enum CreateFromDSLModalTab {
 
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
+  const { permissions } = usePermissionCheck()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
@@ -73,7 +75,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       setFileContent('')
   }
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -125,7 +126,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        getRedirection(permissions, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -185,7 +186,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        getRedirection(permissions, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

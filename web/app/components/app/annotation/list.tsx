@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
-import ActionButton from '@/app/components/base/action-button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import BatchAction from './batch-action'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   list: AnnotationItem[]
@@ -33,6 +34,7 @@ const List: FC<Props> = ({
   isBatchDeleting,
 }) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const { formatTime } = useTimestamp()
   const [currId, setCurrId] = React.useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
@@ -111,13 +113,18 @@ const List: FC<Props> = ({
               <td className='w-[96px] p-3 pr-2' onClick={e => e.stopPropagation()}>
                 {/* Actions */}
                 <div className='flex space-x-1 text-text-tertiary'>
-                  <ActionButton onClick={() => onView(item)}>
-                    <RiEditLine className='h-4 w-4' />
+                   <ActionButton state={permissions.applicationLogsAnnotation.edit?ActionButtonState.Default:ActionButtonState.Disabled} 
+                    onClick={() => { if (permissions.applicationLogsAnnotation.edit) onView(item)}}>
+                    <RiEditLine className='w-4 h-4' />
                   </ActionButton>
+                  
                   <ActionButton
+                    state={permissions.applicationLogsAnnotation.delete?ActionButtonState.Default:ActionButtonState.Disabled}
                     onClick={() => {
-                      setCurrId(item.id)
-                      setShowConfirmDelete(true)
+                      if (permissions.applicationLogsAnnotation.delete){
+                        setCurrId(item.id)
+                        setShowConfirmDelete(true)
+                      }
                     }}
                   >
                     <RiDeleteBinLine className='h-4 w-4' />

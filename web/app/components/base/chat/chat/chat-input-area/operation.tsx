@@ -14,6 +14,7 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
 
 type OperationProps = {
+  disabled?:boolean
   fileConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
@@ -22,6 +23,7 @@ type OperationProps = {
 }
 const Operation = (
   {
+    disabled,
     ref,
     fileConfig,
     speechToTextConfig,
@@ -55,8 +57,25 @@ const Operation = (
             )
           }
         </div>
-        <Button
-          className='ml-3 w-8 px-0'
+        {disabled?(
+          <Button
+          disabled
+          className='ml-3 px-0 w-8'
+          variant='primary'
+          onClick={()=>{}}
+          // style={
+          //   theme
+          //     ? {
+          //       backgroundColor: theme.primaryColor,
+          //     }
+          //     : {}
+          // }
+        >
+          <RiSendPlane2Fill className='w-4 h-4' />
+        </Button>
+        ):(
+          <Button
+          className='ml-3 px-0 w-8'
           variant='primary'
           onClick={onSend}
           style={
@@ -67,8 +86,23 @@ const Operation = (
               : {}
           }
         >
-          <RiSendPlane2Fill className='h-4 w-4' />
+          <RiSendPlane2Fill className='w-4 h-4' />
         </Button>
+        )}
+        {/* <Button
+          className='ml-3 px-0 w-8'
+          variant='primary'
+          onClick={onSend}
+          style={
+            theme
+              ? {
+                backgroundColor: theme.primaryColor,
+              }
+              : {}
+          }
+        >
+          <RiSendPlane2Fill className='w-4 h-4' />
+        </Button> */}
       </div>
     </div>
   )

@@ -325,7 +325,7 @@ class PluginMigration:
                 logger.exception("Failed to fetch plugin unique identifier for %s", plugin_id)
                 plugin_not_exist.append(plugin_id)
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=1000) as executor:
             list(tqdm.tqdm(executor.map(fetch_plugin, plugin_ids), total=len(plugin_ids)))
 
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
@@ -521,7 +521,7 @@ class PluginMigration:
         manager = PluginInstaller()
 
         # download all the plugins and upload
-        thread_pool = ThreadPoolExecutor(max_workers=10)
+        thread_pool = ThreadPoolExecutor(max_workers=1000)
         futures = []
 
         for plugin_id, plugin_identifier in plugin_identifiers_map.items():

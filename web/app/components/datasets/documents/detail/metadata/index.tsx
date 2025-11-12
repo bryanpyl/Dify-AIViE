@@ -24,6 +24,7 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -150,6 +151,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [saveLoading, setSaveLoading] = useState(false)
 
   const { notify } = useContext(ToastContext)
+  const { permissions } = usePermissionCheck()
   const datasetId = useDocumentContext(s => s.datasetId)
   const documentId = useDocumentContext(s => s.documentId)
 
@@ -189,43 +191,47 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
     const { documentType } = metadataParams
 
     return (
-      <>
-        {!doc_type && !documentType && <>
-          <div className={s.desc}>{t('datasetDocuments.metadata.desc')}</div>
-        </>}
-        <div className={s.operationWrapper}>
+      permissions.knowledgeDocumentManagement.edit ? (
+        <>
           {!doc_type && !documentType && <>
-            <span className={s.title}>{t('datasetDocuments.metadata.docTypeSelectTitle')}</span>
+            <div className={s.desc}>{t('datasetDocuments.metadata.desc')}</div>
           </>}
-          {documentType && <>
-            <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
-            <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
-          </>}
-          <Radio.Group value={tempDocType ?? documentType} onChange={setTempDocType} className={s.radioGroup}>
-            {CUSTOMIZABLE_DOC_TYPES.map((type, index) => {
-              const currValue = tempDocType ?? documentType
-              return <Radio key={index} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
-                <IconButton
-                  type={type}
-                  isChecked={currValue === type}
-                />
-              </Radio>
-            })}
-          </Radio.Group>
-          {!doc_type && !documentType && (
-            <Button variant='primary'
-              onClick={confirmDocType}
-              disabled={!tempDocType}
-            >
-              {t('datasetDocuments.metadata.firstMetaAction')}
-            </Button>
-          )}
-          {documentType && <div className={s.opBtnWrapper}>
-            <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant='primary' >{t('common.operation.save')}</Button>
-            <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
-          </div>}
-        </div >
-      </>
+          <div className={s.operationWrapper}>
+            {!doc_type && !documentType && <>
+              <span className={s.title}>{t('datasetDocuments.metadata.docTypeSelectTitle')}</span>
+            </>}
+            {documentType && <>
+              <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
+              <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
+            </>}
+            <Radio.Group value={tempDocType ?? documentType} onChange={setTempDocType} className={s.radioGroup}>
+              {CUSTOMIZABLE_DOC_TYPES.map((type, index) => {
+                const currValue = tempDocType ?? documentType
+                return <Radio key={index} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
+                  <IconButton
+                    type={type}
+                    isChecked={currValue === type}
+                  />
+                </Radio>
+              })}
+            </Radio.Group>
+            {!doc_type && !documentType && (
+              <Button variant='primary'
+                onClick={confirmDocType}
+                disabled={!tempDocType}
+              >
+                {t('datasetDocuments.metadata.firstMetaAction')}
+              </Button>
+            )}
+            {documentType && <div className={s.opBtnWrapper}>
+              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant='primary' >{t('common.operation.save')}</Button>
+              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
+            </div>}
+          </div >
+        </>
+      ) : (
+        <></>
+      )
     )
   }
 
@@ -318,23 +324,28 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
           <>
             <div className={s.titleWrapper}>
               <span className={s.title}>{t('datasetDocuments.metadata.title')}</span>
-              {!editStatus
-                ? <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                  <PencilIcon className={s.opIcon} />
-                  {t('common.operation.edit')}
-                </Button>
-                : showDocTypes
-                  ? null
-                  : <div className={s.opBtnWrapper}>
-                    <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
-                    <Button onClick={onSave}
+              {permissions.knowledgeDocumentManagement.edit && (
+                !editStatus ? (
+                  <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+                    <PencilIcon className={s.opIcon} />
+                    {t('common.operation.edit')}
+                  </Button>
+                ) : showDocTypes ? null : (
+                  <div className={s.opBtnWrapper}>
+                    <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>
+                      {t('common.operation.cancel')}
+                    </Button>
+                    <Button
+                      onClick={onSave}
                       className={`${s.opBtn} ${s.opSaveBtn}`}
-                      variant='primary'
+                      variant="primary"
                       loading={saveLoading}
                     >
                       {t('common.operation.save')}
                     </Button>
-                  </div>}
+                  </div>
+                )
+              )}
             </div>
             {/* show selected doc type and changing entry */}
             {!editStatus

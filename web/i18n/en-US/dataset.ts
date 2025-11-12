@@ -1,5 +1,8 @@
 const translation = {
   knowledge: 'Knowledge',
+  knowledgeTitle: 'Knowledge Base',
+  noSearchResultTitle: 'No Knowledge Found',
+  noSearchResultSubtitle: 'No knowledge found with the keyword',
   chunkingMode: {
     general: 'General',
     parentChild: 'Parent-child',
@@ -42,6 +45,15 @@ const translation = {
   editExternalAPIConfirmWarningContent: {
     front: 'This External Knowledge API is linked to',
     end: 'external knowledge, and this modification will be applied to all of them. Are you sure you want to save this change?',
+  },
+  backToKnowledge: "Back to Knowledge",
+  batchAction: {
+    selected: 'Selected',
+    enable: 'Enable',
+    disable: 'Disable',
+    archive: 'Archive',
+    delete: 'Delete',
+    cancel: 'Cancel',
   },
   editExternalAPIFormWarning: {
     front: 'This External API is linked to',
@@ -133,7 +145,7 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
-  docsFailedNotice: 'documents indexed failed',
+  docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
   documentsDisabled: '{{num}} documents disabled - inactive for over 30 days',
   enable: 'Enable',
@@ -166,14 +178,6 @@ const translation = {
   nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
   nTo1RetrievalLegacyLink: 'Learn more',
   nTo1RetrievalLegacyLinkText: ' N-to-1 retrieval will be officially deprecated in September.',
-  batchAction: {
-    selected: 'Selected',
-    enable: 'Enable',
-    disable: 'Disable',
-    archive: 'Archive',
-    delete: 'Delete',
-    cancel: 'Cancel',
-  },
   preprocessDocument: '{{num}} Preprocess Documents',
   allKnowledge: 'All Knowledge',
   allKnowledgeDescription: 'Select to display all knowledge in this workspace. Only the Workspace Owner can manage all knowledge.',

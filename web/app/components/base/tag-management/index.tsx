@@ -14,7 +14,8 @@ import {
 } from '@/service/tag'
 
 type TagManagementModalProps = {
-  type: 'knowledge' | 'app'
+  type: 'group'
+  subtype: 'app' | 'knowledge' | 'user'
   show: boolean
 }
 
@@ -25,7 +26,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const setTagList = useTagStore(s => s.setTagList)
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
-  const getTagList = async (type: 'knowledge' | 'app') => {
+  const getTagList = async (type: 'group') => {
     const res = await fetchTagList(type)
     setTagList(res)
   }

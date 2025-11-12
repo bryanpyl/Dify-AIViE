@@ -65,7 +65,10 @@ const InviteModal = ({
           onSend(invitation_results)
         }
       }
-      catch { }
+      catch (e) { 
+        console.error("inviteMember error:", e);
+        notify({ type: "error", message: t('common.members.inviteFailed') });
+      }
     }
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })

@@ -92,6 +92,10 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     }
   }
 
+  const handleSarawakIdLogin = () => {
+    router.replace("/sarawak_id/login");
+  };
+
   return <form onSubmit={noop}>
     <div className='mb-3'>
       <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
@@ -158,5 +162,19 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         className="w-full"
       >{t('login.signBtn')}</Button>
     </div>
+    
+    {/* <div className="mb-2">
+        <hr className="border-t-2 my-4" />
+      </div>
+
+    <div className='mb-2'>
+      <Button
+        tabIndex={2}
+        variant='secondary'
+        onClick={handleSarawakIdLogin}
+        disabled={isLoading}
+        className="w-full"
+      >{t('login.sidBtn')}</Button>
+    </div> */}
   </form>
 }

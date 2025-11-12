@@ -211,6 +211,7 @@ class QueueTextChunkEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
+    node_type: NodeType | None = None
     from_variable_selector: list[str] | None = None
     """from variable selector"""
     in_iteration_id: str | None = None
@@ -280,7 +281,7 @@ class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
     """
     QueueAdvancedChatMessageEndEvent entity
     """
-
+    node_type: NodeType | None = None
     event: QueueEvent = QueueEvent.ADVANCED_CHAT_MESSAGE_END
 
 
@@ -297,7 +298,7 @@ class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
     QueueWorkflowSucceededEvent entity
     """
-
+    node_type: NodeType | None = None
     event: QueueEvent = QueueEvent.WORKFLOW_SUCCEEDED
     outputs: Mapping[str, object] = Field(default_factory=dict)
 
@@ -501,7 +502,7 @@ class QueuePingEvent(AppQueueEvent):
     """
     QueuePingEvent entity
     """
-
+    node_type: NodeType | None = None
     event: QueueEvent = QueueEvent.PING
 
 

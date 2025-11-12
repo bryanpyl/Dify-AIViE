@@ -3,7 +3,7 @@ import TemplateCard from './template-card'
 import CreateCard from './create-card'
 import { useI18N } from '@/context/i18n'
 import { useMemo } from 'react'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/i18n-config/language'
 
 const BuiltInPipelineList = () => {
   const { locale } = useI18N()

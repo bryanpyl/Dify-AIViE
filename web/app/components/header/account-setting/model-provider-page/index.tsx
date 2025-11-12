@@ -6,21 +6,28 @@ import {
   RiBrainLine,
 } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
-import ProviderAddedCard from './provider-added-card'
+import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import type {
+  CustomConfigurationModelFixedFields,
   ModelProvider,
 } from './declarations'
 import {
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from './declarations'
 import {
   useDefaultModel,
+  useUpdateModelList,
+  useUpdateModelProviders,
 } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   searchText: string
@@ -31,12 +38,17 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const updateModelProviders = useUpdateModelProviders()
+  const updateModelList = useUpdateModelList()
   const { data: textGenerationDefaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
+  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const { permissions } = usePermissionCheck()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
@@ -81,6 +93,39 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
+  const handleOpenModal = (
+    provider: ModelProvider,
+    configurateMethod: ConfigurationMethodEnum,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  ) => {
+    setShowModelModal({
+      payload: {
+        currentProvider: provider,
+        currentConfigurationMethod: configurateMethod,
+        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+      },
+      onSaveCallback: () => {
+        updateModelProviders()
+
+        if (configurateMethod === ConfigurationMethodEnum.predefinedModel) {
+          provider.supported_model_types.forEach((type) => {
+            updateModelList(type)
+          })
+        }
+
+        if (configurateMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+          eventEmitter?.emit({
+            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+            payload: provider.provider,
+          } as any)
+
+          if (CustomConfigurationModelFixedFields?.__model_type)
+            updateModelList(CustomConfigurationModelFixedFields?.__model_type)
+        }
+      },
+    })
+  }
+
   return (
     <div className='relative -mt-2 pt-1'>
       <div className={cn('mb-2 flex items-center')}>
@@ -106,7 +151,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      {!filteredConfiguredProviders?.length && (
+      {!permissions.settingsModel.add && !filteredConfiguredProviders?.length && (
         <div className='mb-2 rounded-[10px] bg-workflow-process-bg p-4'>
           <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
             <RiBrainLine className='h-5 w-5 text-text-primary' />
@@ -121,11 +166,12 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
+              onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigurationModelFixedFields)}
             />
           ))}
         </div>
       )}
-      {!!filteredNotConfiguredProviders?.length && (
+      {permissions.settingsModel.add && !!filteredNotConfiguredProviders?.length && (
         <>
           <div className='system-md-semibold mb-2 flex items-center pt-2 text-text-primary'>{t('common.modelProvider.toBeConfigured')}</div>
           <div className='relative'>
@@ -134,6 +180,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
                 notConfigured
                 key={provider.provider}
                 provider={provider}
+                onOpenModal={(configurateMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurateMethod)}
               />
             ))}
           </div>

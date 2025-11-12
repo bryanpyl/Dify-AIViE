@@ -12,10 +12,12 @@ type IPopover = {
   className?: string
   htmlContent: React.ReactNode
   popupClassName?: string
+  popoverClassName?:string
   trigger?: 'click' | 'hover'
   position?: 'bottom' | 'br' | 'bl'
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
+  btnClassNameSecondary?:string
   manualClose?: boolean
   disabled?: boolean
 }
@@ -27,9 +29,11 @@ export default function CustomPopover({
   position = 'bottom',
   htmlContent,
   popupClassName,
+  popoverClassName,
   btnElement,
   className,
   btnClassName,
+  btnClassNameSecondary,
   manualClose,
   disabled = false,
 }: IPopover) {
@@ -48,7 +52,7 @@ export default function CustomPopover({
   }
 
   return (
-    <Popover className="relative">
+    <Popover className={`relative ${popoverClassName}`}>
       {({ open }: { open: boolean }) => {
         return (
           <>
@@ -64,9 +68,11 @@ export default function CustomPopover({
                 ref={buttonRef}
                 disabled={disabled}
                 className={cn(
-                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-none',
-                  open && 'border-components-button-secondary-border bg-components-button-secondary-bg-hover',
+                  'group inline-flex items-center bg-components-button-secondary-bg px-3 py-2 rounded-lg text-base border border-components-button-secondary-border font-medium hover:bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover focus:outline-none',
+                  'group flex items-center bg-components-button-secondary-bg px-3 rounded-lg text-base border border-components-button-secondary-border font-medium hover:bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover focus:outline-none',
+                  open && 'bg-components-button-secondary-bg-hover border-components-button-secondary-border',
                   (btnClassName && typeof btnClassName === 'string') && btnClassName,
+                  btnClassNameSecondary,
                   (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),
                 )}
               >

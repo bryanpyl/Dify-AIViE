@@ -9,6 +9,7 @@ import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { usePermissionCheck } from '@/context/permission-context'
 
 dayjs.extend(quarterOfYear)
 
@@ -18,11 +19,12 @@ const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 export type IChartViewProps = {
   appId: string
-  headerRight: React.ReactNode
+  headerRight?: React.ReactNode
 }
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
@@ -42,7 +44,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
     }
   }
 
-  if (!appDetail)
+  if (!appDetail || !permissions.applicationPerformanceMonitoring.view)
     return null
 
   return (

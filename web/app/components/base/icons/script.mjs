@@ -167,6 +167,9 @@ const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
 }
 
 (async () => {
+  // To run a single icon that have been newly added 
+  // await walk('window-minimize-solid.svg', [__dirname, 'assets', 'vender', 'line', 'general'], true)
+  // Default codes: DELETE ENTIRE SRC DIR and REGENERATES THE JSON AND TSX FILES FOR EACH ICONS
   await rm(path.resolve(__dirname, 'src'), { recursive: true, force: true })
   await walk('public', [__dirname, 'assets'])
   await walk('vender', [__dirname, 'assets'], true)

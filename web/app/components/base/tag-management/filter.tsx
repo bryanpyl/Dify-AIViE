@@ -19,7 +19,8 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import { fetchTagList } from '@/service/tag'
 
 type TagFilterProps = {
-  type: 'knowledge' | 'app'
+  type: 'group'
+  subtype: 'app' | 'knowledge' | 'user'
   value: string[]
   onChange: (v: string[]) => void
 }

@@ -25,6 +25,7 @@ type Props = {
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
+  removeAnnotationPermission?:boolean
 }
 
 const EditAnnotationModal: FC<Props> = ({
@@ -40,6 +41,7 @@ const EditAnnotationModal: FC<Props> = ({
   createdAt,
   onRemove,
   onlyEditResponse,
+  removeAnnotationPermission = true,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -121,7 +123,7 @@ const EditAnnotationModal: FC<Props> = ({
             )}
 
             {
-              annotationId
+              annotationId && removeAnnotationPermission
                 ? (
                   <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
                     <div

@@ -17,12 +17,18 @@ import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 
 export type IAppDetailNavProps = {
-  iconType?: 'app' | 'dataset'
+  title?: string
+  icon?: string
+  icon_background?: string
+  desc?: string
+  isExternal?: boolean
+  iconType?: 'app' | 'dataset' | 'notion'
   navigation: Array<{
     name: string
     href: string
     icon: NavIcon
     selectedIcon: NavIcon
+    isExternal?: boolean
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode

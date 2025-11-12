@@ -16,6 +16,8 @@ type IModal = {
   closable?: boolean
   overflowVisible?: boolean
   highPriority?: boolean // For modals that need to appear above dropdowns
+  groupModalUse? :boolean
+  groupClassName?:string
 }
 
 export default function Modal({
@@ -29,6 +31,8 @@ export default function Modal({
   closable = false,
   overflowVisible = false,
   highPriority = false,
+  groupModalUse = false,
+  groupClassName
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
@@ -54,6 +58,7 @@ export default function Modal({
               <DialogPanel className={classNames(
                 'relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
+                groupModalUse ? `flex flex-col max-w-[680px] ${groupClassName ? groupClassName : 'h-[80vh] 2xl:h-[70vh]'}`: `max-w-[480px]`,
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',

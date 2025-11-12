@@ -18,6 +18,7 @@ from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
+from models.dataset import DatasetQuery
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ class ChatAppRunner(AppRunner):
 
         # get context from datasets
         context = None
+        dataset_query_id = None
         if app_config.dataset and app_config.dataset.dataset_ids:
             hit_callback = DatasetIndexToolCallbackHandler(
                 queue_manager,
@@ -156,7 +158,7 @@ class ChatAppRunner(AppRunner):
             )
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context = dataset_retrieval.retrieve(
+            context, dataset_query_id = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -218,6 +220,13 @@ class ChatAppRunner(AppRunner):
         )
 
         # handle invoke result
-        self._handle_invoke_result(
+        result = self._handle_invoke_result(
             invoke_result=invoke_result, queue_manager=queue_manager, stream=application_generate_entity.stream
         )
+
+        if dataset_query_id:
+            dataset_query = db.session.get(DatasetQuery, dataset_query_id)
+
+            if dataset_query:
+                dataset_query.answer = result
+                db.session.commit()

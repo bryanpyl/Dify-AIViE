@@ -34,6 +34,7 @@ import dynamic from 'next/dynamic'
 import Empty from './empty'
 import Footer from './footer'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -70,7 +71,7 @@ const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { permissions, isSystemRole, handleNoViewPermission } = usePermissionCheck()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
@@ -98,7 +99,7 @@ const List = () => {
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: isSystemRole,
   })
 
   const { data, isLoading, error, setSize, mutate } = useSWRInfinite(
@@ -123,16 +124,17 @@ const List = () => {
   ]
 
   useEffect(() => {
+    document.title = `${t('common.menus.apps')} -  Dify`
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
   }, [mutate, t])
 
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [router, isCurrentWorkspaceDatasetOperator])
+  // useEffect(() => {
+  //   if (isCurrentWorkspaceDatasetOperator)
+  //     return router.replace('/datasets')
+  // }, [router, isCurrentWorkspaceDatasetOperator])
 
   useEffect(() => {
     const hasMore = data?.at(-1)?.has_more ?? true
@@ -176,6 +178,8 @@ const List = () => {
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
 
+  if (!permissions.applicationManagement.view) handleNoViewPermission()
+
   return (
     <>
       <div ref={containerRef} className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
@@ -197,7 +201,7 @@ const List = () => {
               isChecked={isCreatedByMe}
               onChange={handleCreatedByMeChange}
             />
-            <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
+            <TagFilter type='group' subtype='app' value={tagFilterValue} onChange={handleTagsChange} />
             <Input
               showLeftIcon
               showClearIcon
@@ -210,19 +214,19 @@ const List = () => {
         </div>
         {(data && data[0].total > 0)
           ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
+            {permissions.applicationManagement.add
               && <NewAppCard ref={newAppCardRef} onSuccess={mutate} selectedAppType={activeTab} />}
             {data.map(({ data: apps }) => apps.map(app => (
               <AppCard key={app.id} app={app} onRefresh={mutate} />
             )))}
           </div>
           : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
+            {permissions.applicationManagement.add
               && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} selectedAppType={activeTab} />}
             <Empty />
           </div>}
 
-        {isCurrentWorkspaceEditor && (
+        {permissions.applicationManagement.add && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
@@ -238,7 +242,7 @@ const List = () => {
         <CheckModal />
         <div ref={anchorRef} className='h-0'> </div>
         {showTagManagementModal && (
-          <TagManagementModal type='app' show={showTagManagementModal} />
+          <TagManagementModal type='group' subtype='app' show={showTagManagementModal} />
         )}
       </div>
 

@@ -130,8 +130,8 @@ class DatasetDocumentSegmentListApi(Resource):
         segment_ids = request.args.getlist("segment_id")
 
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -159,8 +159,8 @@ class DatasetDocumentSegmentApi(Resource):
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -214,8 +214,8 @@ class DatasetDocumentSegmentAddApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -293,8 +293,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -339,8 +339,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -441,8 +441,8 @@ class ChildChunkAddApi(Resource):
         )
         if not segment:
             raise NotFound("Segment not found.")
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -546,8 +546,8 @@ class ChildChunkAddApi(Resource):
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -609,8 +609,8 @@ class ChildChunkUpdateApi(Resource):
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -663,8 +663,8 @@ class ChildChunkUpdateApi(Resource):
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:

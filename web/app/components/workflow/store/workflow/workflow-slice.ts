@@ -4,6 +4,7 @@ import type {
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { truncate } from 'fs/promises'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -31,6 +32,8 @@ export type WorkflowSliceShape = {
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
   fileUploadConfig?: FileUploadConfigResponse
   setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
+  workflowEditPermission: boolean
+  setWorkflowEditPermission: (workflowEditPermission: boolean) => void
 }
 
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
@@ -57,4 +60,6 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
   fileUploadConfig: undefined,
   setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
+  workflowEditPermission: false,
+  setWorkflowEditPermission: workflowEditPermission => set(() => ({ workflowEditPermission })),
 })

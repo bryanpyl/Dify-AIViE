@@ -4,7 +4,7 @@ import I18nServer from './components/i18n-server'
 import BrowserInitializer from './components/browser-initializer'
 import SentryInitializer from './components/sentry-initializer'
 import Zendesk from './components/base/zendesk'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/i18n-config/server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
 import './styles/globals.css'
@@ -13,6 +13,10 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { DatasetAttr } from '@/types/feature'
 import { Instrument_Serif } from 'next/font/google'
 import cn from '@/utils/classnames'
+
+export const metadata = {
+  title: 'AI-ViE',
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

@@ -1,5 +1,5 @@
 from flask_restx import Resource, reqparse
-from jwt import InvalidTokenError
+from jwt.exceptions import PyJWTError
 
 import services
 from controllers.console.auth.error import (
@@ -121,7 +121,7 @@ class EmailCodeLoginApi(Resource):
 
         token_data = WebAppAuthService.get_email_code_login_data(args["token"])
         if token_data is None:
-            raise InvalidTokenError()
+            raise PyJWTError()
 
         if token_data["email"] != args["email"]:
             raise InvalidEmailError()

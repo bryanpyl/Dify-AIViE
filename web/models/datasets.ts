@@ -44,8 +44,10 @@ export type IconInfo = {
 export type DataSet = {
   id: string
   name: string
+  icon: string
   indexing_status: DocumentIndexingStatus
   icon_info: IconInfo
+  icon_background?: string
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
@@ -66,6 +68,7 @@ export type DataSet = {
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
   tags: Tag[]
+  accessible?: boolean
   partial_member_list?: string[]
   external_knowledge_info: {
     external_knowledge_id: string
@@ -85,6 +88,8 @@ export type DataSet = {
   is_published?: boolean // Indicates if the pipeline is published
   runtime_mode: 'rag_pipeline' | 'general'
   enable_api: boolean
+  // NOTE: KnowledgeSelectionModal
+  is_selected: boolean
 }
 
 export type ExternalAPIItem = {
@@ -194,6 +199,7 @@ export type DatasetListRequest = {
   limit: number
   include_all?: boolean
   keyword?: string
+  group_id?: string | null
 }
 
 export type DataSetListResponse = {
@@ -577,6 +583,7 @@ export type SegmentsResponse = {
 export type HitTestingRecord = {
   id: string
   content: string
+  answer: string
   source: 'app' | 'hit_testing' | 'plugin'
   source_app_id: string
   created_by_role: 'account' | 'end_user'

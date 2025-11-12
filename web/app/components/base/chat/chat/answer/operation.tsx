@@ -3,6 +3,8 @@ import {
   memo,
   useMemo,
   useState,
+  useCallback,
+  useEffect,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,10 +13,16 @@ import {
   RiThumbDownLine,
   RiThumbUpLine,
 } from '@remixicon/react'
+import {
+  ThumbsDown,
+  ThumbsUp,
+} from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
+import RegenerateBtn from '@/app/components/base/regenerate-btn'
 import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
@@ -23,6 +31,14 @@ import NewAudioButton from '@/app/components/base/new-audio-button'
 import Modal from '@/app/components/base/modal/modal'
 import Textarea from '@/app/components/base/textarea'
 import cn from '@/utils/classnames'
+import { useEmbeddedChatbotContext } from '../../embedded-chatbot/context'
+import { usePermissionCheck } from '@/context/permission-context'
+
+export enum OperationAction {
+  copy='copy',
+  regenerate='regenerate',
+  feedback = 'feedback',
+}
 
 type OperationProps = {
   item: ChatItem
@@ -47,6 +63,7 @@ const Operation: FC<OperationProps> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    operationAction,
     config,
     onAnnotationAdded,
     onAnnotationEdited,
@@ -54,9 +71,15 @@ const Operation: FC<OperationProps> = ({
     onFeedback,
     onRegenerate,
   } = useChatContext()
+  const { isInactive } = useEmbeddedChatbotContext()
+  const { permissions } = usePermissionCheck()
+  const [copyEnabled, setCopyEnabled] = useState(true)
+  const [regenerateEnabled, setRegenerateEnabled] = useState(true)
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
   const [feedbackContent, setFeedbackContent] = useState('')
+  const [feedbackEnabled, setFeedbackEnabled] = useState(true)
+  const [operationActionItem, setOperationActionItem] = useState(operationAction)
   const {
     id,
     isOpeningStatement,
@@ -67,6 +90,14 @@ const Operation: FC<OperationProps> = ({
     agent_thoughts,
   } = item
   const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
+
+  useEffect(()=>{
+    if (operationActionItem && operationActionItem.length>0){
+      setCopyEnabled(operationActionItem?.includes(OperationAction.copy) ? true : false)
+      setRegenerateEnabled(operationActionItem?.includes(OperationAction.regenerate) ? true : false)
+      setFeedbackEnabled(operationActionItem?.includes(OperationAction.feedback) ? true : false)
+    }
+  },[operationActionItem])
 
   const content = useMemo(() => {
     if (agent_thoughts?.length)
@@ -116,6 +147,16 @@ const Operation: FC<OperationProps> = ({
   }, [isOpeningStatement, showPromptLog, config?.text_to_speech?.enabled, config?.supportAnnotation, config?.annotation_reply?.enabled, config?.supportFeedback, localFeedback?.rating, onFeedback])
 
   const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
+  const [showRegenrate, setShowRegenerate] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (onRegenerate) {
+      setShowRegenerate(true)
+    }
+    else {
+      setShowRegenerate(false)
+    }
+  }, [])
 
   return (
     <>
@@ -128,7 +169,7 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && !isOpeningStatement && (
+        {showPromptLog && copyEnabled && !isOpeningStatement && (
           <div className='hidden group-hover:block'>
             <Log logItem={item} />
           </div>
@@ -157,15 +198,33 @@ const Operation: FC<OperationProps> = ({
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}
+                annotationId={annotation?.id || ''}
+                className='hidden group-hover:block ml-1 shrink-0'
                 cached={!!annotation?.id}
                 query={question}
                 answer={content}
                 onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
                 onEdit={() => setIsShowReplyModal(true)}
+                onRemoved={() => onAnnotationRemoved?.(index)}
+                annotationPermission={permissions.applicationLogsAnnotation}
               />
             )}
           </div>
         )}
+        {
+          annotation?.id && (
+            <div
+              className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
+            >
+              <div className='p-1 rounded-lg bg-[#EEF4FF] '>
+                <MessageFast className='w-4 h-4' />
+              </div>
+            </div>
+          )
+        }
+        {
+          regenerateEnabled && !isInactive && !isOpeningStatement && !noChatInput && showRegenrate && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
+        }
         {!isOpeningStatement && config?.supportFeedback && !localFeedback?.rating && onFeedback && (
           <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
             {!localFeedback?.rating && (
@@ -207,6 +266,7 @@ const Operation: FC<OperationProps> = ({
         annotationId={annotation?.id || ''}
         createdAt={annotation?.created_at}
         onRemove={() => onAnnotationRemoved?.(index)}
+        removeAnnotationPermission = {permissions.applicationLogsAnnotation.delete}
       />
       {isShowFeedbackModal && (
         <Modal

@@ -74,9 +74,9 @@ class DraftWorkflowApi(Resource):
         Get draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # assert isinstance(current_user, Account)
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -114,9 +114,9 @@ class DraftWorkflowApi(Resource):
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # assert isinstance(current_user, Account)
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         content_type = request.headers.get("Content-Type", "")
 
@@ -149,8 +149,8 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
 
         workflow_service = WorkflowService()
 
@@ -210,12 +210,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # assert isinstance(current_user, Account)
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -274,11 +274,11 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -327,10 +327,10 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -379,11 +379,11 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -432,11 +432,11 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -484,11 +484,11 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
@@ -530,11 +530,11 @@ class WorkflowTaskStopApi(Resource):
         Stop workflow task
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         # Stop using both mechanisms for backward compatibility
         # Legacy stop flag mechanism (without user check)
@@ -572,11 +572,11 @@ class DraftWorkflowNodeRunApi(Resource):
         Run draft workflow node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
@@ -626,11 +626,11 @@ class PublishedWorkflowApi(Resource):
         Get published workflow
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
@@ -647,11 +647,11 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, default="", location="json")
@@ -702,11 +702,11 @@ class DefaultBlockConfigsApi(Resource):
         Get default block config
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         # Get default block configs
         workflow_service = WorkflowService()
@@ -728,11 +728,11 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
@@ -770,11 +770,11 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # The role of the current user in the ta table must be admin, owner, or editor
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         if request.data:
             parser = reqparse.RequestParser()
@@ -812,10 +812,10 @@ class PublishedAllWorkflowApi(Resource):
         Get published workflows
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
@@ -878,11 +878,11 @@ class WorkflowByIdApi(Resource):
         """
         Update workflow attributes
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # Check permission
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # Check permission
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, location="json")
@@ -933,11 +933,11 @@ class WorkflowByIdApi(Resource):
         """
         Delete workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # Check permission
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not isinstance(current_user, Account):
+        #     raise Forbidden()
+        # # Check permission
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         workflow_service = WorkflowService()
 

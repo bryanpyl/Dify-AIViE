@@ -17,7 +17,7 @@ import ChildSegmentList from './child-segment-list'
 import NewChildSegment from './new-child-segment'
 import FullScreenDrawer from './common/full-screen-drawer'
 import ChildSegmentDetail from './child-segment-detail'
-import StatusItem from './status-item'
+import StatusItem from '../../status-item'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -47,6 +47,8 @@ import {
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { noop } from 'lodash-es'
+import { usePermissionCheck } from '@/context/permission-context'
+import type { DocumentDisplayStatus } from '@/models/datasets'
 
 const DEFAULT_LIMIT = 10
 
@@ -101,6 +103,7 @@ const Completed: FC<ICompletedProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { permissions } = usePermissionCheck()
   const pathname = usePathname()
   const datasetId = useDocumentContext(s => s.datasetId) || ''
   const documentId = useDocumentContext(s => s.documentId) || ''
@@ -572,13 +575,15 @@ const Completed: FC<ICompletedProps> = ({
     }}>
       {/* Menu Bar */}
       {!isFullDocMode && <div className={s.docSearchWrapper}>
-        <Checkbox
-          className='shrink-0'
-          checked={isAllSelected}
-          indeterminate={!isAllSelected && isSomeSelected}
-          onCheck={onSelectedAll}
-          disabled={isLoadingSegmentList}
-        />
+         {(permissions.knowledgeDocumentManagement.edit || permissions.knowledgeDocumentManagement.delete) && (
+          <Checkbox
+            className='shrink-0'
+            checked={isAllSelected}
+            indeterminate={!isAllSelected && isSomeSelected}
+            onCheck={onSelectedAll}
+            disabled={isLoadingSegmentList}
+          />
+        )}
         <div className={'system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary'}>{totalText}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
@@ -588,7 +593,13 @@ const Completed: FC<ICompletedProps> = ({
           wrapperClassName='h-fit mr-2'
           optionWrapClassName='w-[160px]'
           optionClassName='p-0'
-          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+          renderOption={({ item, selected }) => (
+            <StatusItem
+              item={item}
+              selected={selected}
+              status={item.status as DocumentDisplayStatus}
+            />
+          )}
           notClearable
         />
         <Input
@@ -670,7 +681,7 @@ const Completed: FC<ICompletedProps> = ({
         <SegmentDetail
           key={currSegment.segInfo?.id}
           segInfo={currSegment.segInfo ?? { id: '' }}
-          docForm={docForm}
+          docForm={docForm ?? ChunkingMode.text}
           isEditMode={currSegment.isEditMode}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseSegmentDetail}
@@ -684,7 +695,7 @@ const Completed: FC<ICompletedProps> = ({
         modal
       >
         <NewSegment
-          docForm={docForm}
+          docForm={docForm ?? ChunkingMode.text}
           onCancel={onCloseNewSegmentModal}
           onSave={resetList}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
@@ -702,7 +713,7 @@ const Completed: FC<ICompletedProps> = ({
           key={currChildChunk.childChunkInfo?.id}
           chunkId={currChunkId}
           childChunkInfo={currChildChunk.childChunkInfo ?? { id: '' }}
-          docForm={docForm}
+          docForm={docForm ?? ChunkingMode.text}
           onUpdate={handleUpdateChildChunk}
           onCancel={onCloseChildSegmentDetail}
         />

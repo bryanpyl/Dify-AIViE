@@ -45,7 +45,7 @@ export default function AppSelector() {
 
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { userProfile, langGeniusVersionInfo } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
@@ -65,6 +65,8 @@ export default function AppSelector() {
     localStorage.removeItem('education-expired-has-noticed')
 
     router.push('/signin')
+    // const logoutUrl = process.env.FIM_LOGOUT_URL || ""
+    // router.replace(logoutUrl)
   }
 
   return (
@@ -115,7 +117,7 @@ export default function AppSelector() {
                         className={cn(itemClassName, 'group',
                           'data-[active]:bg-state-base-hover',
                         )}
-                        href='/account'
+                        href='/accounts'
                         target='_self' rel='noopener noreferrer'>
                         <RiAccountCircleLine className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.account.account')}</div>
@@ -125,7 +127,7 @@ export default function AppSelector() {
                     <MenuItem>
                       <div className={cn(itemClassName,
                         'data-[active]:bg-state-base-hover',
-                      )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
+                      )} onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.settings')}</div>
                       </div>
@@ -146,7 +148,8 @@ export default function AppSelector() {
                         </Link>
                       </MenuItem>
                       <Support />
-                      {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+                      {/* {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />} */}
+                      {IS_CLOUD_EDITION && <Compliance />}
                     </div>
                     <div className='p-1'>
                       <MenuItem>

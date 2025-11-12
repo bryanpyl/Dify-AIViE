@@ -24,6 +24,7 @@ from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from services.group_service import GroupService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, group_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
@@ -59,8 +60,14 @@ class AppService:
             filters.append(App.name.ilike(f"%{name}%"))
         # Check if tag_ids is not empty to avoid WHERE false condition
         if args.get("tag_ids") and len(args["tag_ids"]) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
-            if target_ids and len(target_ids) > 0:
+            target_ids = TagService.get_target_ids_by_tag_ids("group", tenant_id, args["tag_ids"])
+            if target_ids:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return None
+        if group_id:
+            target_ids = GroupService.get_target_ids_by_group_id(tenant_id, group_id, "app")
+            if target_ids:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None

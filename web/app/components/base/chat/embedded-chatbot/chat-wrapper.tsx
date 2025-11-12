@@ -9,6 +9,7 @@ import type {
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
+import ConfigPanel from './config-panel'
 import { isDify } from './utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -29,6 +30,10 @@ import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
   const {
+    operationAction,
+    avatarName, 
+    avatarBgColor,
+    chatKey,
     appData,
     appParams,
     appPrevChatList,
@@ -63,8 +68,9 @@ const ChatWrapper = () => {
       },
       supportFeedback: true,
       opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
+      created_at: currentConversationItem?.created_at,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, currentConversationId])
+  }, [appParams, currentConversationItem?.introduction, currentConversationItem?.created_at, currentConversationId])
   const {
     chatList,
     setTargetMessageId,
@@ -73,6 +79,7 @@ const ChatWrapper = () => {
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
+    appData?.site.title,
     appConfig,
     {
       inputs: (currentConversationId ? currentConversationInputs : newConversationInputs) as any,
@@ -123,6 +130,11 @@ const ChatWrapper = () => {
     if (currentChatInstanceRef.current)
       currentChatInstanceRef.current.handleStop = handleStop
   }, [currentChatInstanceRef, handleStop])
+
+  useEffect(()=>{
+    if (chatKey) return
+  },[chatKey])
+
   useEffect(() => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
@@ -173,10 +185,26 @@ const ChatWrapper = () => {
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return <div className='mb-4'></div>
     }
+    if (inputsForms.length) {
+      return (
+        <>
+          {(!currentConversationId && !chatKey) && (
+            <div className={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}>
+              <div className='mb-6' />
+              <ConfigPanel />
+              <div
+                className='my-6 h-[1px]'
+                style={{ background: 'linear-gradient(90deg, rgba(242, 244, 247, 0.00) 0%, #F2F4F7 49.17%, rgba(242, 244, 247, 0.00) 100%)' }}
+              />
+            </div>
+          )}
+        </>
+      )
+    }
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden, inputsForms, chatKey])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
@@ -223,19 +251,32 @@ const ChatWrapper = () => {
     )
   }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
 
-  const answerIcon = isDify()
-    ? <LogoAvatar className='relative shrink-0' />
-    : (appData?.site && appData.site.use_icon_as_answer_icon)
-      ? <AnswerIcon
+  // const answerIcon = isDify()
+  //   ? <LogoAvatar className='relative shrink-0' />
+  //   : (appData?.site && appData.site.use_icon_as_answer_icon)
+  //     ? <AnswerIcon
+  //       iconType={appData.site.icon_type}
+  //       icon={appData.site.icon}
+  //       background={appData.site.icon_background}
+  //       imageUrl={appData.site.icon_url}
+  //     />
+  //     : null
+
+  const answerIcon =
+    appData?.site && appData.site.icon_url ? (
+      <AnswerIcon
         iconType={appData.site.icon_type}
-        icon={appData.site.icon}
-        background={appData.site.icon_background}
+        // icon={appData.site.icon}
+        background={
+          avatarBgColor ? avatarBgColor : appData.site.icon_background
+        }
         imageUrl={appData.site.icon_url}
       />
-      : null
+    ) : null;
 
   return (
     <Chat
+      operationAction={operationAction}
       appData={appData}
       config={appConfig}
       chatList={messageList}

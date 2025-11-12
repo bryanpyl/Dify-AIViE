@@ -2,9 +2,13 @@ import {
   memo,
   useCallback,
   useState,
+  useRef,
+  useEffect,
 } from 'react'
-import Textarea from 'react-textarea-autosize'
+import Textarea, { TextAreaRef } from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
+import { usePermissionCheck } from '@/context/permission-context'
+
 
 type TitleInputProps = {
   value: string
@@ -15,6 +19,7 @@ export const TitleInput = memo(({
   value,
   onBlur,
 }: TitleInputProps) => {
+  const {permissions} = usePermissionCheck()
   const { t } = useTranslation()
   const [localValue, setLocalValue] = useState(value)
 
@@ -30,7 +35,8 @@ export const TitleInput = memo(({
 
   return (
     <input
-      value={localValue}
+    disabled={!permissions.applicationOrchestration.edit}  
+    value={localValue}
       onChange={e => setLocalValue(e.target.value)}
       className={`
         system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
@@ -51,14 +57,25 @@ export const DescriptionInput = memo(({
   value,
   onChange,
 }: DescriptionInputProps) => {
+  const {permissions} = usePermissionCheck()
   const { t } = useTranslation()
   const [focus, setFocus] = useState(false)
+  const textareaRef = useRef<TextAreaRef>(null)
+
   const handleFocus = useCallback(() => {
     setFocus(true)
   }, [])
   const handleBlur = useCallback(() => {
     setFocus(false)
   }, [])
+
+  useEffect(() => {
+    const textareaElement = textareaRef.current?.resizableTextArea?.textArea
+    if (textareaElement) {
+      textareaElement.style.height = 'auto'
+      textareaElement.style.height = `${textareaElement.scrollHeight}px`
+    }
+  }, [value])
 
   return (
     <div
@@ -69,6 +86,8 @@ export const DescriptionInput = memo(({
       `}
     >
       <Textarea
+        disabled={!permissions.applicationOrchestration.edit}
+        ref={textareaRef}
         value={value}
         onChange={e => onChange(e.target.value)}
         minRows={1}

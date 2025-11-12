@@ -4,14 +4,14 @@ import type { ActionItem } from '../types'
 import { slashCommandRegistry } from './registry'
 import { executeCommand } from './command-bus'
 import { useTheme } from 'next-themes'
-import { setLocaleOnClient } from '@/i18n-config'
+import { setLocaleOnClient } from '@/i18n/i18n-config'
 import { themeCommand } from './theme'
 import { languageCommand } from './language'
 import { feedbackCommand } from './feedback'
 import { docsCommand } from './docs'
 import { communityCommand } from './community'
 import { accountCommand } from './account'
-import i18n from '@/i18n-config/i18next-config'
+import i18n from '@/i18n/i18n-config/i18next-config'
 
 export const slashAction: ActionItem = {
   key: '/',

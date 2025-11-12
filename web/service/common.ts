@@ -13,6 +13,7 @@ import type {
   InvitationResponse,
   LangGeniusVersionResponse,
   Member,
+  MemberPaginateResponse,
   ModerateResponse,
   OauthResponse,
   PluginProvider,
@@ -104,6 +105,10 @@ export const fetchMembers: Fetcher<{ accounts: Member[] | null }, { url: string;
   return get<{ accounts: Member[] | null }>(url, { params })
 }
 
+export const fetchMembersPage: Fetcher<MemberPaginateResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<MemberPaginateResponse>(url, { params })
+}
+
 export const fetchProviders: Fetcher<Provider[] | null, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<Provider[] | null>(url, { params })
 }
@@ -128,6 +133,10 @@ export const updateMemberRole: Fetcher<CommonResponse, { url: string; body: Reco
 }
 
 export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return del<CommonResponse>(url)
+}
+
+export const deleteMember: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
   return del<CommonResponse>(url)
 }
 

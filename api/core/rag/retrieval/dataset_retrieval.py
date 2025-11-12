@@ -58,7 +58,9 @@ from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.model import Tag
 from services.external_knowledge_service import ExternalDatasetService
+from services.tag_service import TagService
 
 default_retrieval_model: dict[str, Any] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -72,6 +74,19 @@ default_retrieval_model: dict[str, Any] = {
 class DatasetRetrieval:
     def __init__(self, application_generate_entity=None):
         self.application_generate_entity = application_generate_entity
+    
+    def sandbox_tag_retrieval(
+        self, 
+        app_id:str,
+        tenant_id:str
+        ) -> bool:
+        
+        sandbox_tag_name = 'sandbox'
+        tag_result = TagService.get_tags_by_target_id('group', tenant_id, app_id)
+        
+        tag_names = [tag.name for tag in tag_result]
+        
+        return sandbox_tag_name in tag_names
 
     def retrieve(
         self,
@@ -165,7 +180,7 @@ class DatasetRetrieval:
         all_documents = []
         user_from = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
-            all_documents = self.single_retrieve(
+            all_documents, dataset_query_id = self.single_retrieve(
                 app_id,
                 tenant_id,
                 user_id,
@@ -180,7 +195,7 @@ class DatasetRetrieval:
                 metadata_condition,
             )
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
-            all_documents = self.multiple_retrieve(
+            all_documents, dataset_query_id = self.multiple_retrieve(
                 app_id,
                 tenant_id,
                 user_id,
@@ -276,8 +291,8 @@ class DatasetRetrieval:
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-            return str("\n".join([document_context.content for document_context in document_context_list]))
-        return ""
+            context = str("\n".join([document_context.content for document_context in document_context_list]))
+        return context, dataset_query_id
 
     def single_retrieve(
         self,
@@ -364,7 +379,7 @@ class DatasetRetrieval:
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
                     if dataset.indexing_technique == "economy":
-                        retrieval_method = "keyword_search"
+                        retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
                     # get reranking model
@@ -391,13 +406,17 @@ class DatasetRetrieval:
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
                         )
-                self._on_query(query, [dataset_id], app_id, user_from, user_id)
+                sandbox_tag_result = self.sandbox_tag_retrieval(app_id, tenant_id)
+                dataset_queries = self._on_query(query, [dataset_id], app_id, user_from, user_id, sandbox_tag_result)
 
                 if results:
                     self._on_retrieval_end(results, message_id, timer)
 
-                return results
-        return []
+                if dataset_queries:
+                    return results, dataset_queries[0].id if dataset_queries else None
+                else:
+                    return results, None
+        return [], None
 
     def multiple_retrieve(
         self,
@@ -498,12 +517,17 @@ class DatasetRetrieval:
                 else:
                     all_documents = all_documents[:top_k] if top_k else all_documents
 
-        self._on_query(query, dataset_ids, app_id, user_from, user_id)
+        sandbox_tag_result = self.sandbox_tag_retrieval(app_id, tenant_id)
+        dataset_queries = self._on_query(query, dataset_ids, app_id, user_from, user_id, sandbox_tag_result)
+
 
         if all_documents:
             self._on_retrieval_end(all_documents, message_id, timer)
 
-        return all_documents
+        if dataset_queries:
+            return all_documents, dataset_queries[0].id if dataset_queries else None
+        else:
+            return all_documents, None
 
     def _on_retrieval_end(self, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
         """Handle retrieval end."""
@@ -558,18 +582,19 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
+    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str, sandbox_tag_bool: bool) -> None:
         """
         Handle query.
         """
         if not query:
             return
         dataset_queries = []
+        source = "sandbox" if sandbox_tag_bool else "app"
         for dataset_id in dataset_ids:
             dataset_query = DatasetQuery(
                 dataset_id=dataset_id,
                 content=query,
-                source="app",
+                source=source,
                 source_app_id=app_id,
                 created_by_role=user_from,
                 created_by=user_id,
@@ -578,6 +603,8 @@ class DatasetRetrieval:
         if dataset_queries:
             db.session.add_all(dataset_queries)
         db.session.commit()
+
+        return dataset_queries if sandbox_tag_bool else None
 
     def _retriever(
         self,
@@ -623,7 +650,7 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search",
+                        retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                         dataset_id=dataset.id,
                         query=query,
                         top_k=top_k,

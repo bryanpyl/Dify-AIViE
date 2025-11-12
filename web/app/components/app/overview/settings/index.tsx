@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useContext, useContextSelector } from 'use-context-selector'
 import { Trans, useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
@@ -18,8 +19,9 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
+import AppContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
@@ -34,6 +36,7 @@ export type ISettingsModalProps = {
   defaultValue?: string
   onClose: () => void
   onSave?: (params: ConfigParams) => Promise<void>
+  readOnly:boolean
 }
 
 export type ConfigParams = {
@@ -62,7 +65,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   isShow = false,
   onClose,
   onSave,
+  readOnly,
 }) => {
+  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const {
@@ -235,12 +240,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <RiCloseLine className='h-4 w-4' />
             </ActionButton>
           </div>
-          <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+          <div className='mt-0.5 text-text-tertiary system-xs-regular'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
-              'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
-            })}
-            target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+            {/* <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/guides/application-publishing/launch-your-webapp-quickly#setting-up-your-ai-site'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link> */}
           </div>
         </div>
         {/* form body */}
@@ -250,6 +252,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className='grow'>
               <div className={cn('system-sm-semibold mb-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.webName`)}</div>
               <Input
+                disabled={readOnly}
                 className='w-full'
                 value={inputInfo.title}
                 onChange={onChange('title')}
@@ -258,8 +261,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
             <AppIcon
               size='xxl'
-              onClick={() => { setShowAppIconPicker(true) }}
-              className='mt-2 cursor-pointer'
+              onClick={() => { if (!readOnly){setShowAppIconPicker(true)} }}
+              className={`mt-2 ${readOnly?'cursor-not-allowed':'cursor-pointer'}`}
               iconType={appIcon.type}
               icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
               background={appIcon.type === 'image' ? undefined : appIcon.background}
@@ -270,6 +273,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <div className='relative'>
             <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.webDesc`)}</div>
             <Textarea
+              disabled={readOnly}
               className='mt-1'
               value={inputInfo.desc}
               onChange={e => onDesChange(e.target.value)}
@@ -284,6 +288,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className='flex items-center justify-between'>
                 <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('app.answerIcon.title')}</div>
                 <Switch
+                  disabled={readOnly}
                   defaultValue={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
@@ -295,6 +300,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <div className='flex items-center'>
             <div className={cn('system-sm-semibold grow py-1 text-text-secondary')}>{t(`${prefixSettings}.language`)}</div>
             <SimpleSelect
+              disabled={readOnly}
               wrapperClassName='w-[200px]'
               items={languages.filter(item => item.supported)}
               defaultValue={language}
@@ -311,6 +317,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               <div className='shrink-0'>
                 <Input
+                  disabled={readOnly}
                   className='mb-1 w-[200px]'
                   value={inputInfo.chatColorTheme ?? ''}
                   onChange={onChange('chatColorTheme')}
@@ -318,7 +325,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
                 <div className='flex items-center justify-between'>
                   <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
-                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                  <Switch 
+                    disabled={readOnly}
+                    defaultValue={inputInfo.chatColorThemeInverted} 
+                    onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}>
+                  </Switch>
                 </div>
               </div>
             </div>
@@ -328,13 +339,35 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className='flex items-center justify-between'>
               <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
               <Switch
-                disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
+                disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat') || readOnly}
                 defaultValue={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
             <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
           </div>
+          {/* SSO */}
+          {systemFeatures.enable_web_sso_switch_component && (
+            <>
+              <Divider className="h-px my-0" />
+              <div className='w-full'>
+                <p className='mb-1 system-xs-medium-uppercase text-text-tertiary'>{t(`${prefixSettings}.sso.label`)}</p>
+                <div className='flex justify-between items-center'>
+                  <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.sso.title`)}</div>
+                  <Tooltip
+                    disabled={systemFeatures.sso_enforced_for_web}
+                    popupContent={
+                      <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
+                    }
+                    asChild={false}
+                  >
+                    <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+                  </Tooltip>
+                </div>
+                <p className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.sso.description`)}</p>
+              </div>
+            </>
+          )}
           {/* more settings switch */}
           <Divider className="my-0 h-px" />
           {!isShowMore && (
@@ -368,23 +401,25 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       </div>
                     )}
                   </div>
-                  <Tooltip
+                  <Switch
+                      disabled={readOnly}
+                      defaultValue={inputInfo.copyrightSwitchValue}
+                      onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
+                    />
+                  {/* <Tooltip
                     disabled={webappCopyrightEnabled}
                     popupContent={
                       <div className='w-[180px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
                     }
                     asChild={false}
                   >
-                    <Switch
-                      disabled={!webappCopyrightEnabled}
-                      defaultValue={inputInfo.copyrightSwitchValue}
-                      onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                    />
-                  </Tooltip>
+                    
+                  </Tooltip> */}
                 </div>
                 <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.more.copyrightTip`)}</p>
                 {inputInfo.copyrightSwitchValue && (
                   <Input
+                    disabled={readOnly}
                     className='mt-2 h-10'
                     value={inputInfo.copyright}
                     onChange={onChange('copyright')}
@@ -398,10 +433,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
                   <Trans
                     i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-                    components={{ privacyPolicyLink: <Link href={'https://dify.ai/privacy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
+                    // components={{ privacyPolicyLink: <Link href={'https://dify.ai/privacy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
                   />
                 </p>
                 <Input
+                  disabled={readOnly}
                   className='mt-1'
                   value={inputInfo.privacyPolicy}
                   onChange={onChange('privacyPolicy')}
@@ -413,6 +449,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
                 <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
                 <Textarea
+                  disabled={readOnly}
                   className='mt-1'
                   value={inputInfo.customDisclaimer}
                   onChange={onChange('customDisclaimer')}
@@ -425,7 +462,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         {/* footer */}
         <div className='flex justify-end p-6 pt-5'>
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+          {!readOnly && (<Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>)}
         </div>
         {showAppIconPicker && (
           <div onClick={e => e.stopPropagation()}>

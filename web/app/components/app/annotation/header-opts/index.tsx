@@ -25,7 +25,8 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
 import { clearAllAnnotations } from '@/service/annotation'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/i18n-config/language'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
@@ -45,6 +46,7 @@ const HeaderOptions: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const { permissions } = usePermissionCheck()
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
@@ -100,7 +102,7 @@ const HeaderOptions: FC<Props> = ({
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button type="button" className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
+        <button disabled={!permissions.applicationLogsAnnotation.add} className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
           setShowBulkImportModal(true)
         }}>
           <FilePlus02 className='h-4 w-4 text-text-tertiary' />
@@ -162,10 +164,12 @@ const HeaderOptions: FC<Props> = ({
 
   return (
     <div className='flex space-x-2'>
-      <Button variant='primary' onClick={() => setShowAddModal(true)}>
+      {permissions.applicationLogsAnnotation.add && (
+        <Button variant='primary' onClick={() => setShowAddModal(true)}>
         <RiAddLine className='mr-0.5 h-4 w-4' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
+      )}
       <CustomPopover
         htmlContent={<Operations />}
         position="br"

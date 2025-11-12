@@ -15,6 +15,7 @@ import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import type { OperationName } from '../types'
+import type { Item } from '@/app/components/base/select'
 
 const STATUS_TEXT_COLOR_MAP: ColorMap = {
   green: 'text-util-colors-green-green-600',
@@ -26,6 +27,8 @@ const STATUS_TEXT_COLOR_MAP: ColorMap = {
 }
 
 type StatusItemProps = {
+  item?: Item
+  selected?: boolean
   status: DocumentDisplayStatus
   reverse?: boolean
   scene?: 'list' | 'detail'
@@ -41,6 +44,8 @@ type StatusItemProps = {
 }
 
 const StatusItem = ({
+  item,
+  selected,
   status,
   reverse = false,
   scene = 'list',

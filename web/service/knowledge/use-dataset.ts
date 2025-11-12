@@ -18,10 +18,10 @@ const NAME_SPACE = 'dataset'
 
 const DatasetListKey = [NAME_SPACE, 'list']
 
-export const useDatasetList = (params: DatasetListRequest) => {
-  const { initialPage, tag_ids, limit, include_all, keyword } = params
+export const useDatasetList = (params: DatasetListRequest & { group_id?: string }) => {
+  const { initialPage, tag_ids, limit, include_all, keyword, group_id } = params
   return useInfiniteQuery({
-    queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword],
+    queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword, group_id],
     queryFn: ({ pageParam = 1 }) => {
       const urlParams = qs.stringify({
         tag_ids,
@@ -29,6 +29,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
         include_all,
         keyword,
         page: pageParam,
+        group_id,
       }, { indices: false })
       return get<DataSetListResponse>(`/datasets?${urlParams}`)
     },

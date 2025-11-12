@@ -1,5 +1,6 @@
 import Toast from '@/app/components/base/toast'
 import { textToAudioStream } from '@/service/share'
+import content from '../../share/text-generation/result/content'
 
 declare global {
   // eslint-disable-next-line ts/consistent-type-definitions
@@ -60,12 +61,21 @@ export default class AudioPlayer {
   }
 
   private listenMediaSource(contentType: string) {
-    this.mediaSource?.addEventListener('sourceopen', () => {
-      if (this.sourceBuffer)
-        return
+    if (this.mediaSource && MediaSource.isTypeSupported(contentType)){
+      this.mediaSource?.addEventListener('sourceopen', () => {
+        if (this.sourceBuffer)
+          return
+        try{
+          this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
+        } catch (error){
+          console.error(`Failed to add source buffer: ${error}`)
+        }
+      })
 
-      this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
-    })
+    }
+    else{
+      console.warn(`MediaSource does not support the type: ${contentType}`)
+    }
   }
 
   public setCallback(callback: ((event: string) => void) | null) {

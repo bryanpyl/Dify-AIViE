@@ -24,11 +24,13 @@ import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 
+import { usePermissionCheck } from '@/context/permission-context'
+
 const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -53,16 +55,16 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  useEffect(() => {
-    if (currentWorkspace.role === 'normal')
-      return router.replace('/apps')
-  }, [currentWorkspace, router])
+  // useEffect(() => {
+  //   if (currentWorkspace.role === 'normal')
+  //     return router.replace('/apps')
+  // }, [currentWorkspace, router])
 
   return (
     <div className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
       <div className='sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4'>
         <div className='flex items-center justify-center gap-2'>
-          {isCurrentWorkspaceOwner && (
+          {permissions.knowledgeManagement.view && (
             <CheckboxWithLabel
               isChecked={includeAll}
               onChange={toggleIncludeAll}
@@ -72,7 +74,7 @@ const List = () => {
               tooltip={t('dataset.allKnowledgeDescription') as string}
             />
           )}
-          <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
+          <TagFilter type='group' subtype='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
           <Input
             showLeftIcon
             showClearIcon
@@ -91,10 +93,10 @@ const List = () => {
           </Button>
         </div>
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+      <Datasets tags={tagFilterValue} keywords={searchKeywords} includeAll={includeAll} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
       {showTagManagementModal && (
-        <TagManagementModal type='knowledge' show={showTagManagementModal} />
+        <TagManagementModal type='group' subtype='knowledge' show={showTagManagementModal} />
       )}
 
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}

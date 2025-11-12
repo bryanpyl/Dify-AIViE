@@ -4,6 +4,7 @@ dataset_tag_fields = {
     "id": fields.String,
     "name": fields.String,
     "type": fields.String,
+    "created_by_name": fields.String,
     "binding_count": fields.String,
 }
 

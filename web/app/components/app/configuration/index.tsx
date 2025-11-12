@@ -43,7 +43,7 @@ import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ToastContext } from '@/app/components/base/toast'
-import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
+import { fetchAppDetail, fetchAppDetailDirect, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
@@ -83,6 +83,7 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 import { fetchCollectionList } from '@/service/tools'
 import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -93,7 +94,7 @@ const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-
+  const { permissions, handleNoViewPermission } = usePermissionCheck()
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppSidebarExpand: state.setAppSidebarExpand,
@@ -543,7 +544,7 @@ const Configuration: FC = () => {
         })
       }
       setCollectionList(collectionList)
-      fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
+      fetchAppDetailDirect({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
         const modelConfig = res.model_config
         const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
@@ -856,6 +857,8 @@ const Configuration: FC = () => {
     setAppSidebarExpand('collapse')
   }
 
+  if (!permissions.applicationOrchestration.view) handleNoViewPermission()
+
   if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
@@ -982,6 +985,7 @@ const Configuration: FC = () => {
                           onCompletionParamsChange={(newParams: FormValue) => {
                             setCompletionParams(newParams)
                           }}
+                          readonly={!permissions.applicationOrchestration.edit}
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                         />
@@ -995,7 +999,8 @@ const Configuration: FC = () => {
                       </Button>
                     )}
                     <AppPublisher {...{
-                      publishDisabled: cannotPublish,
+                      disabled: !permissions.applicationOrchestration.edit,
+                      publishDisabled: cannotPublish ,
                       publishedAt: (latestPublishedAt || 0) * 1000,
                       debugWithMultipleModel,
                       multipleModelConfigs,
@@ -1083,7 +1088,7 @@ const Configuration: FC = () => {
               inWorkflow={false}
               showFileUpload={false}
               isChatMode={mode !== 'completion'}
-              disabled={false}
+              disabled={!permissions.applicationOrchestration.edit}
               onChange={handleFeaturesChange}
               onClose={() => setShowAppConfigureFeaturesModal(false)}
               promptVariables={modelConfig.configs.prompt_variables}

@@ -73,6 +73,7 @@ const ChatItem: FC<ChatItemProps> = ({
     suggestedQuestions,
     handleRestart,
   } = useChat(
+    null,
     config,
     {
       inputs,

@@ -175,7 +175,7 @@ export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTe
   return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
 }
 
-export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {
+export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number, source_type?: string, keywords?: string } }> = ({ datasetId, params }) => {
   return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
 }
 
@@ -205,6 +205,10 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
 
 export const fetchDataSources = () => {
   return get<CommonResponse>('api-key-auth/data-source')
+}
+
+export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
+  return get<{ api_base_url: string }>(url)
 }
 
 export const createDataSourceApiKeyBinding: Fetcher<CommonResponse, Record<string, any>> = (body) => {

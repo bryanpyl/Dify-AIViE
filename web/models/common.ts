@@ -1,4 +1,4 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
@@ -35,7 +35,7 @@ export type UserProfileResponse = {
   name: string
   email: string
   avatar: string
-  avatar_url: string | null
+  avatar_url?: string | null
   is_password_set: boolean
   interface_language?: string
   interface_theme?: string
@@ -77,9 +77,29 @@ export type TenantInfoResponse = {
 }
 
 export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
+ avatar: string
+  status: 'pending' | 'active' | 'banned' | 'closed'
+  // role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  role?: string
+  tag_id: string
+  tag_name: string
+}
+
+export type MemberPaginate = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
   avatar: string
   status: 'pending' | 'active' | 'banned' | 'closed'
-  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  role_id: string
+  role_name: string
+  group_id: string
+  group_name: string
+}
+
+export type MemberPaginateResponse = {
+  page: number,
+  limit: number,
+  total: number,
+  has_more: boolean,
+  data: MemberPaginate[]
 }
 
 export enum ProviderName {
@@ -140,8 +160,12 @@ export type IWorkspace = {
 }
 
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
-  role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
+  // role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
+  // new_role: string
+  role?: string
+  permissions?: string[]
   providers: Provider[]
+  in_trail: boolean
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean
@@ -160,6 +184,34 @@ export type DataSourceNotionPage = {
   parent_id: string
   type: string
   is_bound: boolean
+}
+
+export type PermissionActionType = Partial<{
+  add:boolean
+  view:boolean
+  edit:boolean
+  delete:boolean
+}>
+
+export type PermissionType = {
+  applicationManagement:PermissionActionType,
+  applicationOrchestration:PermissionActionType,
+  applicationLogsAnnotation:PermissionActionType,
+  applicationSiteManagement:PermissionActionType,
+  applicationApiService:PermissionActionType,
+  applicationPerformanceMonitoring:PermissionActionType,
+  knowledgeManagement:PermissionActionType,
+  knowledgeDocumentManagement:PermissionActionType,
+  knowledgeSandbox:PermissionActionType,
+  knowledgeGeneralSettings:PermissionActionType,
+  knowledgeAdvancedSettings:PermissionActionType,
+  knowledgeApiService:PermissionActionType,
+  settingsModel:PermissionActionType,
+  settingsDataSource:PermissionActionType,
+  settingsApiExtension:PermissionActionType,
+  groupManagement:PermissionActionType,
+  groupRolesAndPerms:PermissionActionType,
+  groupMemberManagement:PermissionActionType,
 }
 
 export type NotionPage = DataSourceNotionPage & {
@@ -248,7 +300,13 @@ export type InvitationResult = {
   message: string
 }
 
+// export type InviteAccountResponse ={
+//   email:string,
+//   account_id:string
+// }
+
 export type InvitationResponse = CommonResponse & {
+  accounts: string[],
   invitation_results: InvitationResult[]
 }
 

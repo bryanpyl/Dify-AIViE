@@ -20,12 +20,13 @@ import { Plan } from '@/app/components/billing/type'
 import Button from '@/app/components/base/button'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/i18n-config/language'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { RiPencilLine } from '@remixicon/react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const MembersPage = () => {
   const { t } = useTranslation()
@@ -38,7 +39,7 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace } = useAppContext()
   const { data, mutate } = useSWR(
     {
       url: '/workspaces/current/members',
@@ -47,13 +48,14 @@ const MembersPage = () => {
     fetchMembers,
   )
   const { systemFeatures } = useGlobalPublicStore()
+  const { isSystemRole } = usePermissionCheck()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
-  const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const { plan, enableBilling } = useProviderContext()
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
@@ -67,7 +69,8 @@ const MembersPage = () => {
           </div>
           <div className='grow'>
             <div className='system-md-semibold flex items-center gap-1 text-text-secondary'>
-              <span>{currentWorkspace?.name}</span>
+              {isSystemRole ? 'Workspace Users' : 'Team Members'}
+              {/* <span>{currentWorkspace?.name}</span>
               {isCurrentWorkspaceOwner && <span>
                 <Tooltip
                   popupContent={t('common.account.editWorkspaceInfo')}
@@ -81,7 +84,7 @@ const MembersPage = () => {
                     <RiPencilLine className='h-4 w-4 text-text-tertiary' />
                   </div>
                 </Tooltip>
-              </span>}
+              </span>} */}
             </div>
             <div className='system-xs-medium mt-1 text-text-tertiary'>
               {enableBilling && isNotUnlimitedMemberPlan
@@ -105,7 +108,7 @@ const MembersPage = () => {
           {isMemberFull && (
             <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
-          <Button variant='primary' className={cn('shrink-0')} disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)}>
+          <Button variant='primary' className={cn('shrink-0')} disabled={!isSystemRole || isMemberFull} onClick={() => setInviteModalVisible(true)}>
             <RiUserAddLine className='mr-1 h-4 w-4' />
             {t('common.members.invite')}
           </Button>
@@ -114,14 +117,14 @@ const MembersPage = () => {
           <div className='flex min-w-[480px] items-center border-b border-divider-regular py-[7px]'>
             <div className='system-xs-medium-uppercase grow px-3 text-text-tertiary'>{t('common.members.name')}</div>
             <div className='system-xs-medium-uppercase w-[104px] shrink-0 text-text-tertiary'>{t('common.members.lastActive')}</div>
-            <div className='system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary'>{t('common.members.role')}</div>
+            {/* <div className='system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary'>{t('common.members.role')}</div> */}
           </div>
           <div className='relative min-w-[480px]'>
             {
               accounts.map(account => (
                 <div key={account.id} className='flex border-b border-divider-subtle'>
                   <div className='flex grow items-center px-3 py-2'>
-                    <Avatar avatar={account.avatar_url} size={24} className='mr-2' name={account.name} />
+                    <Avatar avatar={account.avatar_url ?? null} size={24} className='mr-2' name={account.name} />
                     <div className=''>
                       <div className='system-sm-medium text-text-secondary'>
                         {account.name}
@@ -132,7 +135,7 @@ const MembersPage = () => {
                     </div>
                   </div>
                   <div className='system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary'>{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
-                  <div className='flex w-[96px] shrink-0 items-center'>
+                  {/* <div className='flex w-[96px] shrink-0 items-center'>
                     {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
                     )}
@@ -145,7 +148,7 @@ const MembersPage = () => {
                     {!isCurrentWorkspaceOwner && (
                       <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
                     )}
-                  </div>
+                  </div> */}
                 </div>
               ))
             }

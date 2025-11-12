@@ -22,6 +22,7 @@ import {
 } from '@/models/app'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -36,6 +37,7 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 

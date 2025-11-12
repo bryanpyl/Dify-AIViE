@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -26,7 +26,7 @@ from core.model_runtime.entities.provider_entities import (
 from models.provider import ProviderType
 
 
-class CustomConfigurationStatus(Enum):
+class CustomConfigurationStatus(StrEnum):
     """
     Enum class for custom configuration status.
     """

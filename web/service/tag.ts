@@ -1,5 +1,5 @@
 import { del, get, patch, post } from './base'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag, TagBinding } from '@/app/components/base/tag-management/constant'
 
 export const fetchTagList = (type: string) => {
   return get<Tag[]>('/tags', { params: { type } })
@@ -26,22 +26,32 @@ export const deleteTag = (tagID: string) => {
   return del(`/tags/${tagID}`)
 }
 
-export const bindTag = (tagIDList: string[], targetID: string, type: string) => {
+export const bindTag = (tagIDList: string[], targetID: string, type: string, subtype: string) => {
   return post('/tag-bindings/create', {
     body: {
       tag_ids: tagIDList,
       target_id: targetID,
       type,
+      subtype,
     },
   })
 }
 
-export const unBindTag = (tagID: string, targetID: string, type: string) => {
+export const unBindTag = (tagID: string, targetID: string, type: string, subtype: string) => {
   return post('/tag-bindings/remove', {
     body: {
       tag_id: tagID,
       target_id: targetID,
       type,
+      subtype,
     },
   })
+}
+
+// export const fetchTargetIdBasedOnTagName = ({url, tagName, tagSubtype}:{url:string, tagName:string, tagSubtype:string})=>{
+//   return get <TagBinding>(`${url}?tag_name=${tagName}&tag_subtype=${tagSubtype}`)
+// }
+
+export const fetchTargetIdBasedOnTagName = ({url, params}:{url:string, params: Record<string,string>})=>{
+  return get <TagBinding> (url, {params})
 }

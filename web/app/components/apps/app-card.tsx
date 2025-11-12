@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
@@ -11,7 +11,7 @@ import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
-import { useAppContext } from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
@@ -32,6 +32,8 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import dynamic from 'next/dynamic'
+import { usePermissionCheck } from '@/context/permission-context'
+import { DeleteGroupBindings, fetchGroupIdByTarget } from '@/service/account'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
@@ -61,9 +63,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
+
+  const mutateApps = useContextSelector(
+    AppsContext,
+    state => state.mutateApps,
+  )
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -74,10 +81,26 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const onConfirmDelete = useCallback(async () => {
     try {
+      const groupIds = await fetchGroupIdByTarget({
+        params: {
+          target_id: app.id,
+          type: "app",
+        },
+      })
+
+      if (groupIds.length > 0) {
+        await DeleteGroupBindings({
+          group_id: groupIds[0],
+          target_id: [app.id],
+          type: "app",
+        })
+      }
+
       await deleteApp(app.id)
       notify({ type: 'success', message: t('app.appDeleted') })
       if (onRefresh)
         onRefresh()
+      mutateApps()
       onPlanInfoChanged()
     }
     catch (e: any) {
@@ -144,7 +167,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()
-      getRedirection(isCurrentWorkspaceEditor, newApp, push)
+      getRedirection(permissions, newApp, push)
     }
     catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -259,28 +282,33 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
-        <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
-          <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
-        </button>
-        <Divider className="my-1" />
-        <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickDuplicate}>
-          <span className='system-sm-regular text-text-secondary'>{t('app.duplicate')}</span>
-        </button>
-        <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
-          <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
-        </button>
-        {(app.mode === 'completion' || app.mode === 'chat') && (
+        {permissions.applicationManagement.edit && (
           <>
-            <Divider className="my-1" />
-            <button
-              type="button"
-              className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
-              onClick={onClickSwitch}
-            >
-              <span className='text-sm leading-5 text-text-secondary'>{t('app.switch')}</span>
+            <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
+              <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
             </button>
+            <Divider className="my-1" />
+            <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickDuplicate}>
+              <span className='system-sm-regular text-text-secondary'>{t('app.duplicate')}</span>
+            </button>
+            <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
+              <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
+            </button>
+            {(app.mode === 'completion' || app.mode === 'chat') && (
+              <>
+                <Divider className="my-1" />
+                <button
+                  type="button"
+                  className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
+                  onClick={onClickSwitch}
+                >
+                  <span className='text-sm leading-5 text-text-secondary'>{t('app.switch')}</span>
+                </button>
+              </>
+            )}
           </>
         )}
+
         {
           (!systemFeatures.webapp_auth.enabled)
             ? <>
@@ -298,24 +326,28 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               </>
             )
         }
-        <Divider className="my-1" />
+        {permissions.applicationManagement.edit && permissions.applicationManagement.delete && (
+          <Divider className="my-1" />
+        )}
         {
-          systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && <>
+          systemFeatures.webapp_auth.enabled && permissions.applicationManagement.edit && <>
             <button type="button" className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickAccessControl}>
               <span className='text-sm leading-5 text-text-secondary'>{t('app.accessControl')}</span>
             </button>
             <Divider className='my-1' />
           </>
         }
-        <button
-          type="button"
-          className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
-          onClick={onClickDelete}
-        >
-          <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
-            {t('common.operation.delete')}
-          </span>
-        </button>
+        {permissions.applicationManagement.edit && (
+          <button
+            type="button"
+            className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
+            onClick={onClickDelete}
+          >
+            <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
+              {t('common.operation.delete')}
+            </span>
+          </button>
+        )}
       </div>
     )
   }
@@ -336,11 +368,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   return (
     <>
       <div
+        className={cn(
+          'relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out',
+          permissions.applicationOrchestration.view ? 'cursor-pointer hover:shadow-lg' : 'cursor-default'
+        )}
         onClick={(e) => {
           e.preventDefault()
-          getRedirection(isCurrentWorkspaceEditor, app, push)
+          getRedirection(permissions, app, push)
         }}
-        className='group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
+        // className='group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
       >
         <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
           <div className='relative shrink-0'>
@@ -387,16 +423,18 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
         </div>
         <div className='absolute bottom-1 left-0 right-0 flex h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1'>
-          {isCurrentWorkspaceEditor && (
+          {permissions.applicationManagement.edit && (
             <>
               <div className={cn('flex w-0 grow items-center gap-1')} onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
               }}>
-                <div className='mr-[41px] w-full grow group-hover:!mr-0'>
+                {isSystemRole &&(
+                  <div className='mr-[41px] w-full grow group-hover:!mr-0'>
                   <TagSelector
                     position='bl'
-                    type='app'
+                    type='group'
+                    subtype='app'
                     targetID={app.id}
                     value={tags.map(tag => tag.id)}
                     selectedTags={tags}
@@ -404,9 +442,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     onChange={onRefresh}
                   />
                 </div>
+                )}
               </div>
               <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-divider-regular group-hover:!flex' />
-              <div className='!hidden shrink-0 group-hover:!flex'>
+              
+              {(permissions.applicationManagement.edit || permissions.applicationManagement.delete) && (<div className='!hidden group-hover:!flex shrink-0'>
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
@@ -431,7 +471,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   }
                   className={'!z-20 h-fit'}
                 />
-              </div>
+              </div>)}
             </>
           )}
         </div>

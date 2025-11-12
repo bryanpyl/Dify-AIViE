@@ -28,8 +28,8 @@ class RagPipelineImportApi(Resource):
     @marshal_with(pipeline_import_fields)
     def post(self):
         # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("mode", type=str, required=True, location="json")
@@ -75,8 +75,8 @@ class RagPipelineImportConfirmApi(Resource):
     @marshal_with(pipeline_import_fields)
     def post(self, import_id):
         # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         # Create service with session
         with Session(db.engine) as session:
@@ -100,8 +100,8 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
@@ -117,8 +117,8 @@ class RagPipelineExportApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
             # Add include_secret params
         parser = reqparse.RequestParser()

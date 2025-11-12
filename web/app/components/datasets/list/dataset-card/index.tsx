@@ -22,6 +22,7 @@ import CornerLabel from '@/app/components/base/corner-label'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -37,7 +38,7 @@ const DatasetCard = ({
   const { t } = useTranslation()
   const { push } = useRouter()
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
+  const { permissions } = usePermissionCheck()
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
   const tagSelectorRef = useRef<HTMLDivElement>(null)
   const isHoveringTagSelector = useHover(tagSelectorRef)
@@ -157,12 +158,22 @@ const DatasetCard = ({
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          isExternalProvider
-            ? push(`/datasets/${dataset.id}/hitTesting`)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
-            : isPipelineUnpublished
-              ? push(`/datasets/${dataset.id}/pipeline`)
-              : push(`/datasets/${dataset.id}/documents`)
+          // isExternalProvider
+          //   ? push(`/datasets/${dataset.id}/hitTesting`)
+          //   // eslint-disable-next-line sonarjs/no-nested-conditional
+          //   : isPipelineUnpublished
+          //     ? push(`/datasets/${dataset.id}/pipeline`)
+          //     : push(`/datasets/${dataset.id}/documents`)
+
+          if (permissions.knowledgeDocumentManagement.view) {
+            push(`/datasets/${dataset.id}/documents`)
+          } else if (permissions.knowledgeSandbox.view) {
+            push(`/datasets/${dataset.id}/sandbox`)
+          } else if (permissions.knowledgeGeneralSettings.view || permissions.knowledgeAdvancedSettings.view) {
+            push(`/datasets/${dataset.id}/settings`)
+          } else {
+            push(`/datasets/${dataset.id}/documents`)
+          }
         }}
       >
         {!dataset.embedding_available && (
@@ -226,7 +237,8 @@ const DatasetCard = ({
           >
             <TagSelector
               position='bl'
-              type='knowledge'
+              type='group'
+              subtype='knowledge'
               targetID={dataset.id}
               value={tags.map(tag => tag.id)}
               selectedTags={tags}
@@ -265,34 +277,38 @@ const DatasetCard = ({
           <span className='system-xs-regular text-divider-deep'>/</span>
           <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
-          <CustomPopover
-            htmlContent={
-              <Operations
-                showDelete={!isCurrentWorkspaceDatasetOperator}
-                showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
-                openRenameModal={openRenameModal}
-                handleExportPipeline={handleExportPipeline}
-                detectIsUsedByApp={detectIsUsedByApp}
-              />
-            }
-            className={'z-20 min-w-[186px]'}
-            popupClassName={'rounded-xl bg-none shadow-none ring-0 min-w-[186px]'}
-            position='br'
-            trigger='click'
-            btnElement={
-              <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
-                <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+        {permissions.knowledgeManagement.delete && (
+            <>
+              <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
+                <CustomPopover
+                  htmlContent={
+                    <Operations
+                      showDelete={!!permissions.knowledgeManagement?.delete}
+                      showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
+                      openRenameModal={openRenameModal}
+                      handleExportPipeline={handleExportPipeline}
+                      detectIsUsedByApp={detectIsUsedByApp}
+                    />
+                  }
+                  className={'z-20 min-w-[186px]'}
+                  popupClassName={'rounded-xl bg-none shadow-none ring-0 min-w-[186px]'}
+                  position='br'
+                  trigger='click'
+                  btnElement={
+                    <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
+                      <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+                    </div>
+                  }
+                  btnClassName={open =>
+                    cn(
+                      'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
+                      open ? 'border-components-actionbar-border bg-state-base-hover' : '',
+                    )
+                  }
+                />
               </div>
-            }
-            btnClassName={open =>
-              cn(
-                'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
-                open ? 'border-components-actionbar-border bg-state-base-hover' : '',
-              )
-            }
-          />
-        </div>
+            </>
+        )}
       </div>
       {showRenameModal && (
         <RenameDatasetModal

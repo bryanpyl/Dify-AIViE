@@ -134,7 +134,7 @@ const StepOne = ({
     <div className='h-full w-full overflow-x-auto'>
       <div className='flex h-full w-full min-w-[1440px]'>
         <div className='relative h-full w-1/2 overflow-y-auto'>
-          <div className='flex justify-end'>
+          <div className='flex justify-center'>
             <div className={classNames(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
@@ -169,7 +169,7 @@ const StepOne = ({
                         {t('datasetCreation.stepOne.dataSourceType.file')}
                       </span>
                     </div>
-                    <div
+                    {/* <div
                       className={cn(
                         s.dataSourceItem,
                         'system-sm-medium',
@@ -191,7 +191,7 @@ const StepOne = ({
                       >
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
-                    </div>
+                    </div> */}
                     {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
                       <div
                         className={cn(
@@ -320,7 +320,7 @@ const StepOne = ({
             <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
           </div>
         </div>
-        <div className='h-full w-1/2 overflow-y-auto'>
+        {/* <div className='h-full w-1/2 overflow-y-auto'>
           {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
           {currentNotionPage && (
             <NotionPagePreview
@@ -330,7 +330,7 @@ const StepOne = ({
             />
           )}
           {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
-        </div>
+        </div> */}
       </div>
     </div>
   )

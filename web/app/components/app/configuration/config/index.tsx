@@ -16,6 +16,7 @@ import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import { ModelModeType } from '@/types/app'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const Config: FC = () => {
   const {
@@ -31,7 +32,7 @@ const Config: FC = () => {
   } = useContext(ConfigContext)
   const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
-
+  const { permissions } = usePermissionCheck()
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
   // simple mode
@@ -62,6 +63,7 @@ const Config: FC = () => {
       >
         {/* Template */}
         <ConfigPrompt
+          readonly= {!permissions.applicationOrchestration.edit}
           mode={mode as AppType}
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
@@ -70,12 +72,13 @@ const Config: FC = () => {
 
         {/* Variables */}
         <ConfigVar
+          readonly={!permissions.applicationOrchestration.edit}
           promptVariables={promptVariables}
           onPromptVariablesChange={handlePromptVariablesNameChange}
         />
 
         {/* Dataset */}
-        <DatasetConfig />
+        <DatasetConfig readOnly={!permissions.applicationOrchestration.edit}/>
 
         {/* Tools */}
         {isAgent && (

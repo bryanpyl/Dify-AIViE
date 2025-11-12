@@ -38,7 +38,7 @@ const NavLink = ({
 
     return res
   })()
-  const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
+  const isActive = (href === "/accounts" && !segment) || href.toLowerCase().split('/')?.pop() === formattedSegment || (href.toLowerCase().includes(formattedSegment!) && formattedSegment == 'groups')
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
   const renderIcon = () => (

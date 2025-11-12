@@ -9,22 +9,22 @@ import {
 import PlanComp from '../plan'
 import Divider from '@/app/components/base/divider'
 import { fetchBillingUrl } from '@/service/billing'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import { useProviderContext } from '@/context/provider-context'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSuperadministrator } = usePermissionCheck()
   const { enableBilling } = useProviderContext()
   const { data: billingUrl } = useSWR(
-    (!enableBilling || !isCurrentWorkspaceManager) ? null : ['/billing/invoices'],
+    (!enableBilling || !isSuperadministrator) ? null : ['/billing/invoices'],
     () => fetchBillingUrl().then(data => data.url),
   )
 
   return (
     <div>
       <PlanComp loc={'billing-page'} />
-      {enableBilling && isCurrentWorkspaceManager && billingUrl && (
+      {enableBilling && isSuperadministrator && billingUrl && (
         <>
           <Divider className='my-4' />
           <a className='system-xs-medium flex cursor-pointer items-center text-text-accent-light-mode-only' href={billingUrl} target='_blank' rel='noopener noreferrer'>

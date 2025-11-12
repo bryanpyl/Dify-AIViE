@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
@@ -19,6 +20,10 @@ import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import type { AppListResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { usePermissionCheck } from '@/context/permission-context'
+import { getRedirection } from '@/utils/app-redirection'
+import { PermissionType } from '@/models/common'
+import { App } from '@/types/app'
 
 const getKey = (
   pageIndex: number,
@@ -42,7 +47,10 @@ const getKey = (
 const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { push } = useRouter()
+  const { userGroupDetail } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
+  const canView = permissions.applicationManagement.view
   const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
@@ -74,8 +82,8 @@ const AppNav = () => {
     if (appsData) {
       const appItems = flatten(appsData?.map(appData => appData.data))
       const navItems = appItems.map((app) => {
-        const link = ((isCurrentWorkspaceEditor, app) => {
-          if (!isCurrentWorkspaceEditor) {
+        const link = ((permissions, app) => {
+          if (!permissions.applicationOrchestration.view) {
             return `/app/${app.id}/overview`
           }
           else {
@@ -84,7 +92,7 @@ const AppNav = () => {
             else
               return `/app/${app.id}/configuration`
           }
-        })(isCurrentWorkspaceEditor, app)
+        })(permissions, app)
         return {
           id: app.id,
           icon_type: app.icon_type,
@@ -98,7 +106,7 @@ const AppNav = () => {
       })
       setNavItems(navItems as any)
     }
-  }, [appsData, isCurrentWorkspaceEditor, setNavItems])
+  }, [appsData, permissions, setNavItems])
 
   // update current app name
   useEffect(() => {
@@ -113,6 +121,16 @@ const AppNav = () => {
     }
   }, [appDetail, navItems])
 
+  const handleRedirectionLink=(permissions:PermissionType, appId?:string)=>{
+    if (permissions.applicationOrchestration.view){ 
+      return `/app/${appId}/configuration`
+    }
+    else {
+      if (permissions.applicationLogsAnnotation.view) return `/app/${appId}/logs`
+      else return `/app/${appId}/overview`
+    }
+  }
+
   return (
     <>
       <Nav
@@ -121,12 +139,15 @@ const AppNav = () => {
         activeIcon={<RiRobot2Fill className='h-4 w-4' />}
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
+        // link={canView ? '/apps' : handleRedirectionLink(permissions, userGroupDetail?.app_id)}
         link='/apps'
         curNav={appDetail}
+        canView={canView}
         navigationItems={navItems}
         createText={t('common.menus.newApp')}
         onCreate={openModal}
         onLoadMore={handleLoadMore}
+        hideNavSelection={false}
       />
       <CreateAppModal
         show={showNewAppDialog}

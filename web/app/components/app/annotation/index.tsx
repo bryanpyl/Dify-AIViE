@@ -13,7 +13,7 @@ import HeaderOpts from './header-opts'
 import { AnnotationEnableStatus, type AnnotationItem, type AnnotationItemBasic, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import ActionButton from '@/app/components/base/action-button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Pagination from '@/app/components/base/pagination'
 import Switch from '@/app/components/base/switch'
 import { addAnnotation, delAnnotation, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
@@ -27,6 +27,7 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import type { App } from '@/types/app'
 import cn from '@/utils/classnames'
 import { delAnnotations } from '@/service/annotation'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   appDetail: App
@@ -35,6 +36,7 @@ type Props = {
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== 'completion')
@@ -157,6 +159,7 @@ const Annotation: FC<Props> = (props) => {
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
+                    disabled={!permissions.applicationLogsAnnotation.edit}
                     size='md'
                     onChange={async (value) => {
                       if (value) {
@@ -181,8 +184,8 @@ const Annotation: FC<Props> = (props) => {
                   {annotationConfig?.enabled && (
                     <div className='flex items-center pl-1.5'>
                       <div className='mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle'></div>
-                      <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                      <ActionButton state={permissions.applicationLogsAnnotation.edit?ActionButtonState.Default:ActionButtonState.Disabled} onClick={() => {if (permissions.applicationLogsAnnotation.edit)setIsShowEdit(true)}}>
+                        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
                       </ActionButton>
                     </div>
                   )}

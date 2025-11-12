@@ -4,4 +4,8 @@ const DatasetList = async () => {
   return <List />
 }
 
+export const metadata = {
+  title: 'Datasets - Dify',
+}
+
 export default DatasetList

@@ -157,8 +157,8 @@ def _api_prerequisite(f):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def wrapper(*args, **kwargs):
         assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
         return f(*args, **kwargs)
 
     return wrapper

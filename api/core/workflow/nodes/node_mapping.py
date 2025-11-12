@@ -24,6 +24,7 @@ from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode as VariableAssignerNodeV1
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as VariableAssignerNodeV2
+from core.workflow.nodes.button_response import ButtonResponseNode
 
 LATEST_VERSION = "latest"
 
@@ -141,5 +142,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
     NodeType.KNOWLEDGE_INDEX: {
         LATEST_VERSION: KnowledgeIndexNode,
         "1": KnowledgeIndexNode,
+    },
+    NodeType.BUTTON_RESPONSE: {
+        LATEST_VERSION: ButtonResponseNode,
+        "1": ButtonResponseNode,
     },
 }

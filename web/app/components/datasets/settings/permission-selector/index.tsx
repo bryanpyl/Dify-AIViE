@@ -65,7 +65,7 @@ const PermissionSelector = ({
   }, [searchKeywords, userProfile])
 
   const filteredMemberList = useMemo(() => {
-    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
+    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id)
   }, [memberList, searchKeywords, userProfile])
 
   const onSelectOnlyMe = useCallback(() => {

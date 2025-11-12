@@ -2,7 +2,7 @@ from urllib import parse
 
 from flask import abort, request
 from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, inputs, abort, marshal, marshal_with, reqparse # type: ignore
 
 import services
 from configs import dify_config
@@ -24,10 +24,12 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_with_role_list_fields
+from fields.member_fields import account_with_role_list_fields, account_pagination_fields
+from libs.login import login_required
 from libs.helper import extract_remote_ip
 from libs.login import login_required
-from models.account import Account, TenantAccountRole
+from models.account import Account, TenantAccountJoin
+from models.model import GroupBinding, Role, RoleAccountJoin, DefaultRoles
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
@@ -41,12 +43,87 @@ class MemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        if not current_user.current_tenant:
-            raise ValueError("No current tenant")
-        members = TenantService.get_tenant_members(current_user.current_tenant)
+        tenant_id = (
+            db.session.query(TenantAccountJoin.tenant_id)
+            .filter(TenantAccountJoin.account_id == current_user.id)
+            .scalar()
+        )
+
+        role_id = (
+            db.session.query(RoleAccountJoin.role_id)
+            .filter(
+                RoleAccountJoin.tenant_id == tenant_id,
+                RoleAccountJoin.account_id == current_user.id
+            )
+            .scalar()
+        )
+
+        role_name = (
+            db.session.query(Role.name)
+            .filter(Role.id == role_id)
+            .scalar()
+        )
+
+        # if role == 'admin' or role == 'owner':
+        if role_name == DefaultRoles.SUPERADMINISTRATOR or role_name == DefaultRoles.SYSTEM_OPERATOR:
+            members = TenantService.get_tenant_members(current_user.current_tenant, None)
+        else:
+            user_group_id = db.session.query(GroupBinding.group_id).filter(GroupBinding.target_id==current_user.id).scalar()
+            members = TenantService.get_tenant_members(current_user.current_tenant, user_group_id)
+
         return {"result": "success", "accounts": members}, 200
+
+
+class MemberListPaginateApi(Resource):
+    """List all members of current tenant."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument('account_id', type=str, location="args", required=False)
+        parser.add_argument('group_id', type=str, location="args", required=False)
+        parser.add_argument('role_id', type=str, location="args", required=False)
+        parser.add_argument("keyword", type=str, location="args", required=False)
+        args = parser.parse_args()
+
+        tenant_service = TenantService()
+
+        tenant_id = (
+            db.session.query(TenantAccountJoin.tenant_id)
+            .filter(TenantAccountJoin.account_id == current_user.id)
+            .scalar()
+        )
+
+        role_id = (
+            db.session.query(RoleAccountJoin.role_id)
+            .filter(
+                RoleAccountJoin.tenant_id == tenant_id,
+                RoleAccountJoin.account_id == current_user.id
+            )
+            .scalar()
+        )
+
+        role_name = (
+            db.session.query(Role.name)
+            .filter(Role.id == role_id)
+            .scalar()
+        )
+
+        # if role == 'admin' or role == 'owner':
+        if role_name == DefaultRoles.SUPERADMINISTRATOR or role_name == DefaultRoles.SYSTEM_OPERATOR:
+            account_pagination = tenant_service.get_paginated_tenant_members(current_user.current_tenant, None, args)
+        else:
+            user_group_id = db.session.query(GroupBinding.group_id).filter(GroupBinding.target_id==current_user.id).scalar()
+            account_pagination = tenant_service.get_paginated_tenant_members(current_user.current_tenant, user_group_id, args)
+
+        if not account_pagination:
+            return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
+
+        return marshal(account_pagination, account_pagination_fields)
 
 
 class MemberInviteEmailApi(Resource):
@@ -59,15 +136,15 @@ class MemberInviteEmailApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("emails", type=list, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, default="admin", location="json")
+        # parser.add_argument("role", type=str, required=True, default="admin", location="json")
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
         invitee_emails = args["emails"]
-        invitee_role = args["role"]
+        # invitee_role = args["role"]
         interface_language = args["language"]
-        if not TenantAccountRole.is_non_owner_role(invitee_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+        # if not TenantAccountRole.is_non_owner_role(invitee_role):
+        #     return {"code": "invalid-role", "message": "Invalid role"}, 400
 
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
@@ -75,6 +152,11 @@ class MemberInviteEmailApi(Resource):
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
         invitation_results = []
+        console_web_url = dify_config.CONSOLE_WEB_URL
+
+        inviter = current_user
+        invitation_results = []
+        accounts= []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
         workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
@@ -87,8 +169,10 @@ class MemberInviteEmailApi(Resource):
                 if not inviter.current_tenant:
                     raise ValueError("No current tenant")
                 token = RegisterService.invite_new_member(
-                    inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
+                    inviter.current_tenant, invitee_email, interface_language, inviter=inviter
                 )
+                account = db.session.query(Account).filter_by(email=invitee_email).first()
+                accounts.append(account.id if account else None)
                 encoded_invitee_email = parse.quote(invitee_email)
                 invitation_results.append(
                     {
@@ -98,6 +182,8 @@ class MemberInviteEmailApi(Resource):
                     }
                 )
             except AccountAlreadyInTenantError:
+                account = db.session.query(Account).filter_by(email=invitee_email).first()
+                accounts.append(account.id if account else None)
                 invitation_results.append(
                     {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
                 )
@@ -106,6 +192,7 @@ class MemberInviteEmailApi(Resource):
 
         return {
             "result": "success",
+            "accounts":accounts,
             "invitation_results": invitation_results,
             "tenant_id": str(inviter.current_tenant.id) if inviter.current_tenant else "",
         }, 201
@@ -142,55 +229,80 @@ class MemberCancelInviteApi(Resource):
             "tenant_id": str(current_user.current_tenant.id) if current_user.current_tenant else "",
         }, 200
 
-
-class MemberUpdateRoleApi(Resource):
-    """Update member role."""
+class MemberDeleteApi(Resource):
+    """Delete member."""
 
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
-        new_role = args["role"]
-
-        if not TenantAccountRole.is_valid_role(new_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
-
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        if not current_user.current_tenant:
-            raise ValueError("No current tenant")
-        member = db.session.get(Account, str(member_id))
-        if not member:
+    def delete(self, member_id):
+        member = db.session.query(Account).filter(Account.id == str(member_id)).first()
+        if member is None:
             abort(404)
+        else:
+            try:
+                TenantService.delete_member(current_user.current_tenant, member, current_user)
+            except services.errors.account.CannotOperateSelfError as e:
+                return {"code": "cannot-operate-self", "message": str(e), "status": 400}, 400
+            except services.errors.account.NoPermissionError as e:
+                return {"code": "forbidden", "message": str(e), "status": 403}, 403
+            except services.errors.account.MemberNotInTenantError as e:
+                return {"code": "member-not-found", "message": str(e), "status": 404}, 404
+            except Exception as e:
+                raise ValueError(str(e))
 
-        try:
-            assert member is not None, "Member not found"
-            TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
-        except Exception as e:
-            raise ValueError(str(e))
-
-        # todo: 403
-
-        return {"result": "success"}
+        return {"code": "success", "message": "Member deleted successfully.", "status": 200}, 200
 
 
-class DatasetOperatorMemberListApi(Resource):
-    """List all members of current tenant."""
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_with_role_list_fields)
-    def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        if not current_user.current_tenant:
-            raise ValueError("No current tenant")
-        members = TenantService.get_dataset_operator_members(current_user.current_tenant)
-        return {"result": "success", "accounts": members}, 200
+# class MemberUpdateRoleApi(Resource):
+#     """Update member role."""
+
+#     @setup_required
+#     @login_required
+#     @account_initialization_required
+#     def put(self, member_id):
+#         parser = reqparse.RequestParser()
+#         parser.add_argument("role", type=str, required=True, location="json")
+#         args = parser.parse_args()
+#         new_role = args["role"]
+
+#         if not TenantAccountRole.is_valid_role(new_role):
+#             return {"code": "invalid-role", "message": "Invalid role"}, 400
+
+#         if not isinstance(current_user, Account):
+#             raise ValueError("Invalid user account")
+#         if not current_user.current_tenant:
+#             raise ValueError("No current tenant")
+#         member = db.session.get(Account, str(member_id))
+#         if not member:
+#             abort(404)
+
+#         try:
+#             assert member is not None, "Member not found"
+#             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
+#         except Exception as e:
+#             raise ValueError(str(e))
+
+#         # todo: 403
+
+#         return {"result": "success"}
+
+
+# class DatasetOperatorMemberListApi(Resource):
+#     """List all members of current tenant."""
+
+#     @setup_required
+#     @login_required
+#     @account_initialization_required
+#     @marshal_with(account_with_role_list_fields)
+#     def get(self):
+#         if not isinstance(current_user, Account):
+#             raise ValueError("Invalid user account")
+#         if not current_user.current_tenant:
+#             raise ValueError("No current tenant")
+#         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
+#         return {"result": "success", "accounts": members}, 200
 
 
 class SendOwnerTransferEmailApi(Resource):
@@ -342,10 +454,12 @@ class OwnerTransfer(Resource):
 
 
 api.add_resource(MemberListApi, "/workspaces/current/members")
+api.add_resource(MemberListPaginateApi, "/workspaces/current/members-page")
 api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email")
 api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
-api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
-api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
+api.add_resource(MemberDeleteApi, "/workspaces/current/members/<uuid:member_id>/delete")
+# api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
+# api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
 # owner transfer
 api.add_resource(SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email")
 api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")

@@ -5,8 +5,9 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, cast
+from typing import Any, Optional, cast
 
+from ldap3 import Server, Connection, SIMPLE, SUBTREE
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -28,15 +29,26 @@ from models.account import (
     AccountStatus,
     Tenant,
     TenantAccountJoin,
-    TenantAccountRole,
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
-from models.model import DifySetup
+from models.model import (
+    DefaultRoles,
+    DifySetup,
+    Group,
+    GroupBinding,
+    MemberPermissions,
+    Permission,
+    Role,
+    RoleAccountJoin,
+    RolePermissionJoin,
+    Site,
+)
 from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
+    AccountNotFoundError,
     AccountNotLinkTenantError,
     AccountPasswordError,
     AccountRegisterError,
@@ -69,6 +81,8 @@ from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
 )
+from flask_sqlalchemy.pagination import Pagination
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +146,7 @@ class AccountService:
 
         current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
         if current_tenant:
-            account.set_tenant_id(current_tenant.tenant_id)
+            account.current_tenant_id = current_tenant.tenant_id
         else:
             available_ta = (
                 db.session.query(TenantAccountJoin)
@@ -143,7 +157,7 @@ class AccountService:
             if not available_ta:
                 return None
 
-            account.set_tenant_id(available_ta.tenant_id)
+            account.current_tenant_id = available_ta.tenant_id
             available_ta.current = True
             db.session.commit()
 
@@ -153,7 +167,7 @@ class AccountService:
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         db.session.refresh(account)
-        db.session.close()
+        # db.session.close()
         return account
 
     @staticmethod
@@ -172,34 +186,108 @@ class AccountService:
 
     @staticmethod
     def authenticate(email: str, password: str, invite_token: str | None = None) -> Account:
+        ldap_server = "ldap.sarawaknet.gov.my"
+        ldap_port = 389
+        base_dn = "o=sains,o=sarawaknet"
+        search_filter = f"(mail={email})"
+
+        connection = None
+
+        try:
+            # Initialize the LDAP connection
+            server = Server(ldap_server, port=ldap_port)
+            connection = Connection(server, auto_bind=True)
+
+            search_result = connection.search(base_dn, search_filter, SUBTREE)
+
+            if not search_result:
+                print("LDAP authentication failed: User not found.")
+                raise AccountNotFoundError("Account not found.")
+            else:
+                user_dn = connection.entries[0].entry_dn
+
+                connection = Connection(
+                    server,
+                    user=user_dn,
+                    password=password,
+                    authentication=SIMPLE,
+                    auto_bind=True,
+                )
+                print("LDAP authentication successful: User found.")
+
+            # Proceed to verify the account in the local database
+            account = db.session.query(Account).filter_by(email=email).first()
+            if not account:
+                raise AccountNotFoundError()
+
+            if account.status == AccountStatus.BANNED.value:
+                raise AccountLoginError("Account is banned.")
+
+            # if password and invite_token and account.password is None:
+            #     # if invite_token is valid, set password and password_salt
+            #     salt = secrets.token_bytes(16)
+            #     base64_salt = base64.b64encode(salt).decode()
+            #     password_hashed = hash_password(password, salt)
+            #     base64_password_hashed = base64.b64encode(password_hashed).decode()
+            #     account.password = base64_password_hashed
+            #     account.password_salt = base64_salt
+
+            # if account.password is None or not compare_password(password, account.password, account.password_salt):
+            #     raise AccountPasswordError("Invalid email or password.")
+
+            if account.status == AccountStatus.PENDING.value:
+                account.status = AccountStatus.ACTIVE.value
+                account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+
+            db.session.commit()
+
+            return cast(Account, account)
+
+        except Exception as e:
+            # Check if the error message contains "invalidCredentials"
+            if "invalidCredentials" in str(e):
+                print(f"LDAP authentication failed: {e}")
+                raise AccountPasswordError("Invalid email or password.")
+            else:
+                print(f"An unexpected error occurred: {e}")
+                raise
+
+        finally:
+            # Ensure that connection is valid before unbinding
+            if connection:
+                connection.unbind()
+    
+    @staticmethod
+    def sso_authenticate(email: str) -> Account:
         """authenticate account with email and password"""
 
+        # Proceed to verify the account in the local database
         account = db.session.query(Account).filter_by(email=email).first()
         if not account:
-            raise AccountPasswordError("Invalid email or password.")
+            raise AccountNotFoundError()
 
         if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
 
-        if password and invite_token and account.password is None:
-            # if invite_token is valid, set password and password_salt
-            salt = secrets.token_bytes(16)
-            base64_salt = base64.b64encode(salt).decode()
-            password_hashed = hash_password(password, salt)
-            base64_password_hashed = base64.b64encode(password_hashed).decode()
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
+        # if password and invite_token and account.password is None:
+        #     # if invite_token is valid, set password and password_salt
+        #     salt = secrets.token_bytes(16)
+        #     base64_salt = base64.b64encode(salt).decode()
+        #     password_hashed = hash_password(password, salt)
+        #     base64_password_hashed = base64.b64encode(password_hashed).decode()
+        #     account.password = base64_password_hashed
+        #     account.password_salt = base64_salt
 
-        if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
+        # if account.password is None or not compare_password(password, account.password, account.password_salt):
+        #     raise AccountPasswordError("Invalid email or password.")
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = naive_utc_now()
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
 
         db.session.commit()
 
-        return account
+        return cast(Account, account)
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -268,7 +356,8 @@ class AccountService:
         account.interface_theme = interface_theme
 
         # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, "UTC")
+        # account.timezone = language_timezone_mapping.get(interface_language, "UTC")
+        account.timezone = 'Asia/Kuala_Lumpur'
 
         db.session.add(account)
         db.session.commit()
@@ -1021,24 +1110,38 @@ class TenantService:
         else:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
-        account.current_tenant = tenant
+        account.current_tenant_id = tenant.id
         db.session.commit()
         tenant_was_created.send(tenant)
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
+    def create_tenant_member(tenant: Tenant, account: Account, role: str = "") -> TenantAccountJoin:
         """Create tenant member"""
-        if role == TenantAccountRole.OWNER.value:
-            if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
-                logger.error("Tenant %s has already an owner.", tenant.id)
-                raise Exception("Tenant already has an owner.")
+        # if role == TenantAccountRole.OWNER.value:
+        #     if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
+        #         logger.error("Tenant %s has already an owner.", tenant.id)
+        #         raise Exception("Tenant already has an owner.")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
-            ta.role = role
+            role_id = db.session.query(Role.id).filter_by(tenant_id=tenant.id, name=role).scalar()
+            if role_id:
+                role_account = RoleAccountJoin(tenant_id=tenant.id, account_id=account.id, role_id=role_id)
+
+                if role_account:
+                    role_account.role_id = role_id
+                else:
+                    role_account = RoleAccountJoin(tenant_id=tenant.id, account_id=account.id, role_id=role_id)
+                    db.session.add(role_account)
         else:
-            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
+            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id)
             db.session.add(ta)
+
+            role_id = db.session.query(Role.id).filter_by(tenant_id=tenant.id, name=role).scalar()
+            if role_id:
+                role_account = RoleAccountJoin(tenant_id=tenant.id, account_id=account.id, role_id=role_id)
+                db.session.add(role_account)
+
 
         db.session.commit()
         if dify_config.BILLING_ENABLED:
@@ -1055,19 +1158,19 @@ class TenantService:
             .all()
         )
 
-    @staticmethod
-    def get_current_tenant_by_account(account: Account):
-        """Get tenant by account and add the role"""
-        tenant = account.current_tenant
-        if not tenant:
-            raise TenantNotFoundError("Tenant not found.")
+    # @staticmethod
+    # def get_current_tenant_by_account(account: Account):
+    #     """Get tenant by account and add the role"""
+    #     tenant = account.current_tenant
+    #     if not tenant:
+    #         raise TenantNotFoundError("Tenant not found.")
 
-        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        if ta:
-            tenant.role = ta.role
-        else:
-            raise TenantNotFoundError("Tenant not found for the account.")
-        return tenant
+    #     ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+    #     if ta:
+    #         tenant.role = ta.role
+    #     else:
+    #         raise TenantNotFoundError("Tenant not found for the account.")
+    #     return tenant
 
     @staticmethod
     def switch_tenant(account: Account, tenant_id: str | None = None):
@@ -1096,70 +1199,200 @@ class TenantService:
             ).update({"current": False})
             tenant_account_join.current = True
             # Set the current tenant for the account
-            account.set_tenant_id(tenant_account_join.tenant_id)
+            account.current_tenant_id = tenant_account_join.tenant_id
             db.session.commit()
 
     @staticmethod
-    def get_tenant_members(tenant: Tenant) -> list[Account]:
+    def get_tenant_members(tenant: Tenant, user_group_id: str) -> list[Account]:
         """Get tenant members"""
-        query = (
-            db.session.query(Account, TenantAccountJoin.role)
-            .select_from(Account)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(TenantAccountJoin.tenant_id == tenant.id)
-        )
+        if user_group_id:
+            query = (
+                db.session.query(
+                    Account,
+                    Role.name.label("role"),
+                    GroupBinding.group_id.label("group_id"),
+                    Group.name.label("group_name"),
+                )
+                .select_from(Account)
+                .join(RoleAccountJoin, Account.id == RoleAccountJoin.account_id)
+                .outerjoin(Role, Role.id == RoleAccountJoin.role_id)
+                .outerjoin(GroupBinding, Account.id == GroupBinding.target_id)
+                .outerjoin(Group, GroupBinding.group_id == Group.id)
+                .filter(
+                    RoleAccountJoin.tenant_id == tenant.id,
+                    GroupBinding.group_id == user_group_id,
+                )
+                .order_by(
+                    # TenantAccountJoin.role.asc(),
+                    GroupBinding.group_id,
+                )
+            )
+        else:
+            query = (
+                db.session.query(
+                    Account,
+                    Role.name.label("role"),
+                    GroupBinding.group_id.label("group_id"),
+                    Group.name.label("group_name"),
+                )
+                .select_from(Account)
+                .join(RoleAccountJoin, Account.id == RoleAccountJoin.account_id)
+                .outerjoin(Role, Role.id == RoleAccountJoin.role_id)
+                .outerjoin(GroupBinding, Account.id == GroupBinding.target_id)
+                .outerjoin(Group, GroupBinding.group_id == Group.id)
+                .filter(RoleAccountJoin.tenant_id == tenant.id)
+                .order_by(
+                    # TenantAccountJoin.role.asc(),
+                    GroupBinding.group_id,
+                )
+            )
 
         # Initialize an empty list to store the updated accounts
         updated_accounts = []
 
-        for account, role in query:
+        for account, role, group_id, group_name in query:
             account.role = role
+            account.group_id = group_id
+            account.group_name = group_name
             updated_accounts.append(account)
 
         return updated_accounts
 
     @staticmethod
-    def get_dataset_operator_members(tenant: Tenant) -> list[Account]:
-        """Get dataset admin members"""
-        query = (
-            db.session.query(Account, TenantAccountJoin.role)
-            .select_from(Account)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(TenantAccountJoin.tenant_id == tenant.id)
-            .where(TenantAccountJoin.role == "dataset_operator")
-        )
+    def get_paginated_tenant_members(tenant: Tenant, user_group_id: str, args: dict) -> Pagination | None:
+        """Get tenant members with pagination"""
+        if user_group_id:
+            query = (
+                db.session.query(
+                    Account,
+                    Role.id,
+                    Role.name,
+                    GroupBinding.group_id.label("group_id"),
+                    Group.name.label("group_name"),
+                )
+                .select_from(Account)
+                .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
+                .outerjoin(GroupBinding, Account.id == GroupBinding.target_id)
+                .outerjoin(Group, GroupBinding.group_id == Group.id)
+                .outerjoin(RoleAccountJoin, Account.id == RoleAccountJoin.account_id)
+                .outerjoin(Role, RoleAccountJoin.role_id == Role.id)
+                .filter(
+                    TenantAccountJoin.tenant_id == tenant.id,
+                    GroupBinding.group_id == user_group_id,
+                )
+                .order_by(
+                    # TenantAccountJoin.role.asc(),
+                    GroupBinding.group_id,
+                )
+            )
+        else:
+            query = (
+                db.session.query(
+                    Account,
+                    Role.id,
+                    Role.name,
+                    GroupBinding.group_id.label("group_id"),
+                    Group.name.label("group_name"),
+                )
+                .select_from(Account)
+                .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
+                .outerjoin(GroupBinding, Account.id == GroupBinding.target_id)
+                .outerjoin(Group, GroupBinding.group_id == Group.id)
+                .outerjoin(RoleAccountJoin, Account.id == RoleAccountJoin.account_id)
+                .outerjoin(Role, RoleAccountJoin.role_id == Role.id)
+                .filter(TenantAccountJoin.tenant_id == tenant.id)
+                .order_by(
+                    # TenantAccountJoin.role.asc(),
+                    GroupBinding.group_id,
+                )
+            )
 
+        if args.get("account_id"):
+            account_id = args["account_id"]
+            query = query.filter(Account.id == account_id)
+
+        if args.get("group_id"):
+            group_id = args["group_id"]
+            query = query.filter(GroupBinding.group_id == group_id)
+
+        if args.get("role_id"):
+            role_id = args["role_id"]
+            query = query.filter(RoleAccountJoin.role_id == role_id)
+
+        if args.get("keyword"):
+            keyword = args["keyword"][:30]
+            query = query.filter(Account.name.ilike(f"%{keyword}%"))
+            
         # Initialize an empty list to store the updated accounts
         updated_accounts = []
 
-        for account, role in query:
-            account.role = role
+        for account, role_id, role_name, group_id, group_name in query:
+            account.role_id = role_id
+            account.role_name = role_name
+            account.group_id = group_id
+            account.group_name = group_name
             updated_accounts.append(account)
 
-        return updated_accounts
+        paginated_members = db.paginate(
+            query,
+            page=args["page"],
+            per_page=args["limit"],
+            error_out=False,
+        )
+
+        return paginated_members
+
+
+    # @staticmethod
+    # def get_dataset_operator_members(tenant: Tenant) -> list[Account]:
+    #     """Get dataset admin members"""
+    #     query = (
+    #         db.session.query(Account, TenantAccountJoin.role)
+    #         .select_from(Account)
+    #         .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
+    #         .where(TenantAccountJoin.tenant_id == tenant.id)
+    #         .where(TenantAccountJoin.role == "dataset_operator")
+    #     )
+
+    #     # Initialize an empty list to store the updated accounts
+    #     updated_accounts = []
+
+    #     for account, role in query:
+    #         account.role = role
+    #         updated_accounts.append(account)
+
+    #     return updated_accounts
 
     @staticmethod
-    def has_roles(tenant: Tenant, roles: list[TenantAccountRole]) -> bool:
+    def has_roles(tenant: Tenant, account: Account, roles: list[DefaultRoles]) -> bool:
         """Check if user has any of the given roles for a tenant"""
-        if not all(isinstance(role, TenantAccountRole) for role in roles):
-            raise ValueError("all roles must be TenantAccountRole")
+        if not all(isinstance(role, DefaultRoles) for role in roles):
+            raise ValueError("all roles must be DefaultRoles")
 
         return (
-            db.session.query(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles]))
+            db.session.query(RoleAccountJoin)
+            .join(Role, Role.id == RoleAccountJoin.role_id)
+            .filter(
+                RoleAccountJoin.tenant_id == tenant.id, RoleAccountJoin.account_id == account.id, Role.name.in_([role.value for role in roles])
+            )
             .first()
             is not None
         )
 
     @staticmethod
-    def get_user_role(account: Account, tenant: Tenant) -> TenantAccountRole | None:
+    def get_user_role(account: Account, tenant: Tenant) -> Optional[DefaultRoles]:
         """Get the role of the current account for a given tenant"""
-        join = (
-            db.session.query(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+        role_account = (
+            db.session.query(RoleAccountJoin)
+            .filter(RoleAccountJoin.tenant_id == tenant.id, RoleAccountJoin.account_id == account.id)
             .first()
         )
-        return TenantAccountRole(join.role) if join else None
+
+        if not role_account:
+            return None
+
+        role = db.session.query(Role).get(role_account.role_id)
+        return role.name if role else None
 
     @staticmethod
     def get_tenant_count() -> int:
@@ -1167,12 +1400,12 @@ class TenantService:
         return cast(int, db.session.query(func.count(Tenant.id)).scalar())
 
     @staticmethod
-    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
+    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
         """Check member permission"""
         perms = {
-            "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "remove": [TenantAccountRole.OWNER],
-            "update": [TenantAccountRole.OWNER],
+            "add": [MemberPermissions.ADD_GROUP_MEMBER],
+            "remove": [MemberPermissions.DELETE_GROUP_MEMBER],
+            "update": [MemberPermissions.EDIT_GROUP_MEMBER],
         }
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
@@ -1181,11 +1414,24 @@ class TenantService:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
 
-        ta_operator = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=operator.id).first()
+        role_account = db.session.query(RoleAccountJoin).filter_by(tenant_id=tenant.id, account_id=operator.id).first()
 
-        if not ta_operator or ta_operator.role not in perms[action]:
+        if not role_account:
+            raise NoPermissionError("Role not found for operator.")
+
+        role_permissions = db.session.query(RolePermissionJoin).filter_by(tenant_id=tenant.id, role_id=role_account.role_id).all()
+
+        if not role_permissions:
+            raise NoPermissionError("Permissions not found for role.")
+
+        permission_ids = [rp.permission_id for rp in role_permissions]
+        permissions = db.session.query(Permission).filter(
+            Permission.id.in_(permission_ids)
+        ).all()
+
+        if not any(p.code in perms[action] for p in permissions):
             raise NoPermissionError(f"No permission to {action} member.")
-
+        
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
         """Remove member from tenant"""
@@ -1203,39 +1449,54 @@ class TenantService:
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
-
+    
     @staticmethod
-    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
-        """Update member role"""
-        TenantService.check_member_permission(tenant, operator, member, "update")
+    def delete_member(tenant: Tenant, account: Account, operator: Account) -> None:
+        """Delete member"""
+        if operator.id == account.id and TenantService.check_member_permission(tenant, operator, account, "remove"):
+            raise CannotOperateSelfError("Cannot operate self.")
 
-        target_member_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member.id).first()
-        )
-
-        if not target_member_join:
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        if not ta:
             raise MemberNotInTenantError("Member not in tenant.")
 
-        if target_member_join.role == new_role:
-            raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
-
-        if new_role == "owner":
-            # Find the current owner and change their role to 'admin'
-            current_owner_join = (
-                db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
-            )
-            if current_owner_join:
-                current_owner_join.role = "admin"
-
-        # Update the role of the target member
-        target_member_join.role = new_role
+        db.session.delete(ta)
+        # db.session.delete(account)
         db.session.commit()
 
-    @staticmethod
-    def get_custom_config(tenant_id: str):
-        tenant = db.get_or_404(Tenant, tenant_id)
 
-        return tenant.custom_config_dict
+    # @staticmethod
+    # def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
+    #     """Update member role"""
+    #     TenantService.check_member_permission(tenant, operator, member, "update")
+
+    #     target_member_join = (
+    #         db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member.id).first()
+    #     )
+
+    #     if not target_member_join:
+    #         raise MemberNotInTenantError("Member not in tenant.")
+
+    #     if target_member_join.role == new_role:
+    #         raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+
+    #     if new_role == "owner":
+    #         # Find the current owner and change their role to 'admin'
+    #         current_owner_join = (
+    #             db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
+    #         )
+    #         if current_owner_join:
+    #             current_owner_join.role = "admin"
+
+    #     # Update the role of the target member
+    #     target_member_join.role = new_role
+    #     db.session.commit()
+
+    # @staticmethod
+    # def get_custom_config(tenant_id: str):
+    #     tenant = db.get_or_404(Tenant, tenant_id)
+
+    #     return tenant.custom_config_dict
 
     @staticmethod
     def is_owner(account: Account, tenant: Tenant) -> bool:
@@ -1326,7 +1587,7 @@ class RegisterService:
             ):
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
+                account.current_tenant_id = tenant.id
                 tenant_was_created.send(tenant)
 
             db.session.commit()
@@ -1347,7 +1608,7 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "", inviter: Account | None = None
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")
@@ -1361,7 +1622,7 @@ class RegisterService:
             name = email.split("@")[0]
 
             account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+                email=email, name=name, language=language, status=AccountStatus.ACTIVE, is_setup=True
             )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)

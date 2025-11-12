@@ -59,7 +59,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.Loop,
-  BlockEnum.DocExtractor, BlockEnum.ListFilter,
+  BlockEnum.DocExtractor, BlockEnum.ListFilter, BlockEnum.ButtonResponse,
   BlockEnum.Agent, BlockEnum.DataSource,
 ]
 
@@ -192,6 +192,13 @@ export const FILE_STRUCT: Var[] = [
     variable: 'related_id',
     type: VarType.string,
   },
+]
+
+export const BUTTON_RESPONSE_STRUCT: Var[]=[
+  {
+    variable:'answer',
+    type:VarType.object
+  }
 ]
 
 export const DEFAULT_FILE_UPLOAD_SETTING = {

@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime
 from collections.abc import Generator
 from threading import Thread
 from typing import Union, cast
@@ -390,7 +391,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if llm_result.message.content
             else ""
         )
-        message.updated_at = naive_utc_now()
+        message.updated_at = naive_utc_now().replace(microsecond=0)
         message.answer_tokens = usage.completion_tokens
         message.answer_unit_price = usage.completion_unit_price
         message.answer_price_unit = usage.completion_price_unit

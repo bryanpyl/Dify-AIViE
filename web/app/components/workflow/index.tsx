@@ -92,6 +92,7 @@ import useMatchSchemaType from './nodes/_base/components/variable/use-match-sche
 import type { VarInInspect } from '@/types/workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -131,10 +132,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+  // const setWorkflowEditPermission= useStore(s=>s.setWorkflowEditPermission)
+  const { permissions, handleNoViewPermission } = usePermissionCheck()
   const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
   const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
   const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
   const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
+  const workflowEditPermission = useStore(s => s.workflowEditPermission)
+  const setWorkflowEditPermission = useStore(s => s.setWorkflowEditPermission)
   const controlHeight = useMemo(() => {
     if (!workflowCanvasHeight)
       return '100%'
@@ -167,9 +172,27 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft()
-  const { workflowReadOnly } = useWorkflowReadOnly()
+  const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
+
+  // const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const [workflowRunning, setWorkflowRunning] = useState<Boolean>(false)
+
+  useEffect(()=>{
+    if (permissions && permissions.applicationOrchestration.view && permissions.applicationOrchestration.edit){
+      setWorkflowEditPermission(true)
+    }
+    else{
+      setWorkflowEditPermission(false)
+    }
+  },[permissions])
+
+  useEffect(()=>{
+    if (getWorkflowReadOnly())
+      setWorkflowRunning(true) 
+    else setWorkflowRunning(false)
+  },[getWorkflowReadOnly])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
@@ -343,6 +366,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }
 
+  if (!permissions.applicationOrchestration.view){
+    handleNoViewPermission()
+  }
+
   return (
     <div
       id='workflow-container'
@@ -355,13 +382,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
-      <div
-        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
-        style={{ height: controlHeight }}
-      >
-        <Control />
-      </div>
-      <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
+      { workflowEditPermission && (
+        <>
+        <div
+          className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+          style={{ height: controlHeight }}
+        >
+          <Control />
+        </div>
+        <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
+        </>
+      )}
       <PanelContextmenu />
       <NodeContextmenu />
       <SelectionContextmenu />

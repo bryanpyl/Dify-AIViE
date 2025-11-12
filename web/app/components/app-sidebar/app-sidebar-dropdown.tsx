@@ -17,6 +17,7 @@ import NavLink from './navLink'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { NavIcon } from './navLink'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   navigation: Array<{
@@ -29,7 +30,8 @@ type Props = {
 
 const AppSidebarDropdown = ({ navigation }: Props) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  // const { isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
   const appDetail = useAppStore(state => state.appDetail)
   const [detailExpand, setDetailExpand] = useState(false)
 
@@ -73,7 +75,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
             <div className={cn('w-[305px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg')}>
               <div className='p-2'>
                 <div
-                  className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}
+                  className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isSystemRole && 'cursor-pointer hover:bg-state-base-hover')}
                   onClick={() => {
                     setDetailExpand(true)
                     setOpen(false)

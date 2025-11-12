@@ -1,0 +1,10 @@
+.emailTag{ 
+    font-size:12px !important; 
+    line-height: 16px !important;
+    background-color: #f0f9ff !important;
+    border: 0.05rem solid !important;
+    border-color: var(--color-text-accent) !important;
+    border-radius: 0.65rem !important;
+    color: var(--color-text-accent) !important;
+    padding: 0.2em 0.6em !important;
+}

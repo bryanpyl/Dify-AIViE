@@ -7,7 +7,7 @@ import { Plan } from '../../../type'
 import { ALL_PLANS } from '../../../config'
 import Toast from '../../../../base/toast'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import List from './list'
 import Button from './button'
@@ -40,7 +40,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
   const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSuperadministrator } = usePermissionCheck()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -64,7 +64,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       return
 
     // Only workspace manager can buy plan
-    if (!isCurrentWorkspaceManager) {
+    if (!isSuperadministrator) {
       Toast.notify({
         type: 'error',
         message: t('billing.buyPermissionDeniedTip'),

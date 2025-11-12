@@ -43,8 +43,8 @@ class AnnotationReplyActionApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def post(self, app_id, action: Literal["enable", "disable"]):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         parser = reqparse.RequestParser()
@@ -70,8 +70,8 @@ class AppAnnotationSettingDetailApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
@@ -99,8 +99,8 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, app_id, annotation_setting_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
@@ -125,8 +125,8 @@ class AnnotationReplyActionStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def get(self, app_id, job_id, action):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         job_id = str(job_id)
         app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
@@ -160,8 +160,8 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -199,8 +199,8 @@ class AnnotationApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
     def post(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         parser = reqparse.RequestParser()
@@ -214,8 +214,8 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
 
@@ -250,8 +250,8 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
@@ -273,8 +273,8 @@ class AnnotationUpdateDeleteApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
     def post(self, app_id, annotation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         annotation_id = str(annotation_id)
@@ -289,8 +289,8 @@ class AnnotationUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, app_id, annotation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         annotation_id = str(annotation_id)
@@ -311,8 +311,8 @@ class AnnotationBatchImportApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def post(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_id = str(app_id)
         # check file
@@ -342,8 +342,8 @@ class AnnotationBatchImportStatusApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     def get(self, app_id, job_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         job_id = str(job_id)
         indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
@@ -377,8 +377,8 @@ class AnnotationHitHistoryListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id, annotation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)

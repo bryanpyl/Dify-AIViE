@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, List, Literal, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import exists, func, select
@@ -29,7 +29,7 @@ from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account, TenantAccountRole
+from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -45,7 +45,7 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
-from models.model import UploadFile
+from models.model import UploadFile, TagBinding, Tag, DefaultRoles
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
@@ -69,6 +69,7 @@ from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService
+from services.group_service import GroupService
 from services.vector_service import VectorService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -92,74 +93,95 @@ logger = logging.getLogger(__name__)
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, group_id=None, include_all=False, selected_datasets=None) :
+        query = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
             # get permitted dataset ids
-            dataset_permission = (
-                db.session.query(DatasetPermission).filter_by(account_id=user.id, tenant_id=tenant_id).all()
-            )
+            dataset_permission = db.session.query(DatasetPermission).filter_by(account_id=user.id, tenant_id=tenant_id).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
 
-            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
-                # only show datasets that the user has permission to access
-                # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                    query = query.where(Dataset.id.in_(permitted_dataset_ids))
+            # if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+            #     # only show datasets that the user has permission to access
+            #     if permitted_dataset_ids:
+            #         query = query.filter(Dataset.id.in_(permitted_dataset_ids))
+            #     else:
+            #         return [], 0
+            # else:
+            if user.current_role not in [DefaultRoles.SUPERADMINISTRATOR, DefaultRoles.SYSTEM_OPERATOR] or not include_all:
+                # show all datasets that the user has permission to access
+                if permitted_dataset_ids:
+                    query = query.filter(
+                        db.or_(
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                            db.and_(
+                                Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                            ),
+                            db.and_(
+                                Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                Dataset.id.in_(permitted_dataset_ids),
+                            ),
+                        )
+                    )
                 else:
-                    return [], 0
-            else:
-                if user.current_role != TenantAccountRole.OWNER or not include_all:
-                    # show all datasets that the user has permission to access
-                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                    Dataset.id.in_(permitted_dataset_ids),
-                                ),
-                            )
+                    query = query.filter(
+                        db.or_(
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                            db.and_(
+                                Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                            ),
                         )
-                    else:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                            )
-                        )
+                    )
         else:
             # if no user, only show datasets that are shared with all team members
-            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            query = query.filter(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
-            query = query.where(Dataset.name.ilike(f"%{search}%"))
-
-        # Check if tag_ids is not empty to avoid WHERE false condition
-        if tag_ids and len(tag_ids) > 0:
-            if tenant_id is not None:
-                target_ids = TagService.get_target_ids_by_tag_ids(
-                    "knowledge",
-                    tenant_id,
-                    tag_ids,
-                )
-            else:
-                target_ids = []
-            if target_ids and len(target_ids) > 0:
-                query = query.where(Dataset.id.in_(target_ids))
+            query = query.filter(Dataset.name.ilike(f"%{search}%"))
+        
+        if tag_ids:
+            target_ids = TagService.get_target_ids_by_tag_ids("group", tenant_id, tag_ids)
+            if target_ids:
+                query = query.filter(Dataset.id.in_(target_ids))
             else:
                 return [], 0
 
-        datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
 
-        return datasets.items, datasets.total
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
+            if group_id:
+                target_ids = GroupService.get_target_ids_by_group_id(current_tenant_id=current_user.current_tenant_id, group_id=group_id, type='knowledge')
+                if target_ids:
+                    query = query.filter(Dataset.id.in_(target_ids))
+                else:
+                    return [], 0
+
+        # Fetch all datasets (without pagination)
+        datasets = query.all()
+
+        # Reorder datasets: Move selected_datasets to the front
+        if selected_datasets:
+            selected_datasets_set = set(selected_datasets)
+
+            selected_datasets = []
+            for dataset in datasets:
+                if dataset.id in selected_datasets_set:
+                    selected_datasets.append(dataset)
+
+            remaining_datasets = []
+            for dataset in datasets:
+                if dataset.id not in selected_datasets_set:
+                    remaining_datasets.append(dataset)
+
+            datasets = selected_datasets + remaining_datasets
+
+        # Manually paginate after sorting
+        total = len(datasets)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_datasets = datasets[start:end]
+
+        return paginated_datasets, total
 
     @staticmethod
     def get_process_rules(dataset_id):
@@ -974,7 +996,7 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
-        if user.current_role != TenantAccountRole.OWNER:
+        if user.current_role not in [DefaultRoles.SUPERADMINISTRATOR, DefaultRoles.SYSTEM_OPERATOR]:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
@@ -996,7 +1018,7 @@ class DatasetService:
         if not user:
             raise ValueError("User not found")
 
-        if user.current_role != TenantAccountRole.OWNER:
+        if user.current_role not in [DefaultRoles.SUPERADMINISTRATOR, DefaultRoles.SYSTEM_OPERATOR]:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
                 if dataset.created_by != user.id:
                     raise NoPermissionError("You do not have permission to access this dataset.")
@@ -1009,11 +1031,16 @@ class DatasetService:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def get_dataset_queries(dataset_id: str, page: int, per_page: int):
-        stmt = select(DatasetQuery).filter_by(dataset_id=dataset_id).order_by(db.desc(DatasetQuery.created_at))
-
-        dataset_queries = db.paginate(select=stmt, page=page, per_page=per_page, max_per_page=100, error_out=False)
-
+    def get_dataset_queries(dataset_id: str, page: int, per_page: int, source_type:Optional[str]='app', keywords: Optional[str]=''):
+        dataset_queries = (
+            db.session.query(DatasetQuery).filter(
+                DatasetQuery.dataset_id==dataset_id,
+                DatasetQuery.source==source_type,
+                DatasetQuery.content.ilike(f'%{keywords}%')
+            )
+            .order_by(db.desc(DatasetQuery.created_at))
+            .paginate(page=page, per_page=per_page, max_per_page=100, error_out=False)
+        )
         return dataset_queries.items, dataset_queries.total
 
     @staticmethod
@@ -1470,7 +1497,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                        "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                         "top_k": 4,
@@ -1752,7 +1779,7 @@ class DocumentService:
     #             dataset.collection_binding_id = dataset_collection_binding.id
     #             if not dataset.retrieval_model:
     #                 default_retrieval_model = {
-    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     #                     "reranking_enable": False,
     #                     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     #                     "top_k": 2,
@@ -2205,7 +2232,7 @@ class DocumentService:
             retrieval_model = knowledge_config.retrieval_model
         else:
             retrieval_model = RetrievalModel(
-                search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
+                search_method=RetrievalMethod.SEMANTIC_SEARCH,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
                 top_k=4,
@@ -2215,6 +2242,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
+            permission = DatasetPermissionEnum.ALL_TEAM,
             data_source_type=knowledge_config.data_source.info_list.data_source_type,  # type: ignore
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
@@ -2989,6 +3017,13 @@ class SegmentService:
         segment_db_ids = [info[1] for info in segments_info]
         total_words = sum(info[2] for info in segments_info if info[2] is not None)
 
+        segment_word_count = (
+            db.session.query(func.sum(DocumentSegment.word_count))
+            .filter(DocumentSegment.id.in_(segment_ids))
+            .scalar()
+        ) or 0
+
+
         # Get child chunk IDs before parent segments are deleted
         child_node_ids = []
         if index_node_ids:
@@ -3011,10 +3046,9 @@ class SegmentService:
         else:
             document.word_count = max(0, document.word_count - total_words)
 
-        db.session.add(document)
-
-        # Delete database records
         db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
+        document.word_count -= segment_word_count
+        db.session.add(document)
         db.session.commit()
 
     @classmethod
@@ -3376,20 +3410,21 @@ class DatasetPermissionService:
 
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
-        if not user.is_dataset_editor:
+        if not user.can_update_dataset_settings:
             raise NoPermissionError("User does not have permission to edit this dataset.")
+        # if not user.is_dataset_editor:
+        #     raise NoPermissionError("User does not have permission to edit this dataset.")
+        # if user.is_dataset_operator and dataset.permission != requested_permission:
+        #     raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
 
-        if user.is_dataset_operator and dataset.permission != requested_permission:
-            raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
+        # if user.is_dataset_operator and requested_permission == "partial_members":
+        #     if not requested_partial_member_list:
+        #         raise ValueError("Partial member list is required when setting to partial members.")
 
-        if user.is_dataset_operator and requested_permission == "partial_members":
-            if not requested_partial_member_list:
-                raise ValueError("Partial member list is required when setting to partial members.")
-
-            local_member_list = cls.get_dataset_partial_member_list(dataset.id)
-            request_member_list = [user["user_id"] for user in requested_partial_member_list]
-            if set(local_member_list) != set(request_member_list):
-                raise ValueError("Dataset operators cannot change the dataset permissions.")
+        #     local_member_list = cls.get_dataset_partial_member_list(dataset.id)
+        #     request_member_list = [user["user_id"] for user in requested_partial_member_list]
+        #     if set(local_member_list) != set(request_member_list):
+        #         raise ValueError("Dataset operators cannot change the dataset permissions.")
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id):

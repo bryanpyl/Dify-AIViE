@@ -6,7 +6,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import current_user, login_required
-from models.account import Account, TenantAccountRole
+from models.account import Account
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
@@ -16,7 +16,8 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         assert isinstance(current_user, Account)
-        if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        # if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -67,7 +68,8 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str, config_id: str):
         assert isinstance(current_user, Account)
-        if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        # if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id

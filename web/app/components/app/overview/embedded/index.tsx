@@ -46,6 +46,14 @@ const OPTION_MAP = {
     ? `,
   baseUrl: '${url}${basePath}'`
     : ''},
+    chatConfig:{
+    showConfigPanel: true, //to show a configuration panel before chat start
+    key: "{your_chat_key}" //make sure to set showConfigPanel as false if key is provided
+  },
+  chatWidgetConfig:{
+    avatar_name:"{avatar_name}", //Chat's avatar name
+    avatar_icon_bgcolor:"#FFFFFF", //Background color of the avatar icon 
+  },
   inputs: {
     // You can define the inputs from the Start node here
     // key is the variable name

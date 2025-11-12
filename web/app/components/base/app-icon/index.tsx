@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { type FC, useRef } from 'react'
+import { type FC, useRef, useEffect, useState } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
 import { cva } from 'class-variance-authority'
@@ -99,20 +99,32 @@ const AppIcon: FC<AppIconProps> = ({
   onClick,
   showEditIcon = false,
 }) => {
+  const [imageError, setImageError] = useState<boolean>(false)
+
   const isValidImageIcon = iconType === 'image' && imageUrl
   const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
 
+  useEffect(()=>{
+    if (isValidImageIcon){
+      const iconImg = new Image()
+
+      iconImg.src = imageUrl
+      iconImg.onload = ()=> setImageError(false)
+      iconImg.onerror = ()=>setImageError(true)
+    }
+  },[isValidImageIcon, imageUrl])
+
   return (
     <span
       ref={wrapperRef}
       className={classNames(appIconVariants({ size, rounded }), className)}
-      style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+      style={{ background: background? background:'#FFEAD5' }}
       onClick={onClick}
     >
       {
-        isValidImageIcon
+        (isValidImageIcon && !imageError)
           ? <img src={imageUrl} className='h-full w-full' alt='app icon' />
           : (innerIcon || Icon)
       }

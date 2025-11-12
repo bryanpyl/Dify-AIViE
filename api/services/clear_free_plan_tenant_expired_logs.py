@@ -352,7 +352,7 @@ class ClearFreePlanTenantExpiredLogs:
 
         handled_tenant_count = 0
 
-        thread_pool = ThreadPoolExecutor(max_workers=10)
+        thread_pool = ThreadPoolExecutor(max_workers=1000)
 
         def process_tenant(flask_app: Flask, tenant_id: str):
             try:

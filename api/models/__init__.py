@@ -5,7 +5,6 @@ from .account import (
     InvitationCode,
     Tenant,
     TenantAccountJoin,
-    TenantAccountRole,
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
@@ -26,6 +25,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .engine import db
 from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
     ApiRequest,
@@ -55,6 +55,14 @@ from .model import (
     TagBinding,
     TraceAppConfig,
     UploadFile,
+    Permission, 
+    Role,
+    RolePermissionJoin,
+    RoleAccountJoin,
+    Group,
+    GroupBinding,
+    Module,
+    SubModule, 
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider
 from .provider import (
@@ -158,7 +166,6 @@ __all__ = [
     "TagBinding",
     "Tenant",
     "TenantAccountJoin",
-    "TenantAccountRole",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
@@ -181,4 +188,13 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "db",
+    "Permission", 
+    "Role",
+    "RolePermissionJoin",
+    "RoleAccountJoin",
+    "Group",
+    "GroupBinding",
+    "Module",
+    "SubModule"
 ]

@@ -15,8 +15,20 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import { activityStatus } from './hooks'
+import { AivieAppType } from '@/types/app'
+import { OperationAction } from '../chat/answer/operation'
 
 export type EmbeddedChatbotContextValue = {
+  operationAction: OperationAction[]|null,
+  avatarName:string, 
+  avatarBgColor:string,
+  chatKey:string|null,
+  appInitialized: boolean,
+  aivieAppType: AivieAppType|null
+  isInactive?:boolean
+  handleActivityStatus: (value:activityStatus)=>void,
+  handleShowConfigPanelBeforeChat: (value:boolean)=>void,
   userCanAccess?: boolean
   appInfoError?: any
   appInfoLoading?: boolean
@@ -29,6 +41,7 @@ export type EmbeddedChatbotContextValue = {
   appPrevChatList: ChatItem[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
+  showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
@@ -59,6 +72,16 @@ export type EmbeddedChatbotContextValue = {
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
+  operationAction:null,
+  avatarName:AivieAppType.other,
+  avatarBgColor:"#FFFFFF",
+  chatKey:null,
+  appInitialized: false,
+  aivieAppType:null,
+  isInactive:false,
+  handleActivityStatus: ()=>{},
+  handleShowConfigPanelBeforeChat:()=>{},
+  showConfigPanelBeforeChat: false,
   userCanAccess: false,
   currentConversationId: '',
   appPrevChatList: [],

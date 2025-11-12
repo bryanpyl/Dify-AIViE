@@ -106,8 +106,8 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @account_initialization_required
     def post(self, provider):
         user = current_user
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         tenant_id = user.current_tenant_id
         req = reqparse.RequestParser()
@@ -157,8 +157,8 @@ class ToolBuiltinProviderUpdateApi(Resource):
     def post(self, provider):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -211,8 +211,8 @@ class ToolApiProviderAddApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -298,8 +298,8 @@ class ToolApiProviderUpdateApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -339,8 +339,8 @@ class ToolApiProviderDeleteApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -446,8 +446,8 @@ class ToolWorkflowProviderCreateApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -485,8 +485,8 @@ class ToolWorkflowProviderUpdateApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -527,8 +527,8 @@ class ToolWorkflowProviderDeleteApi(Resource):
     def post(self):
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         user_id = user.id
         tenant_id = user.current_tenant_id
@@ -684,8 +684,8 @@ class ToolPluginOAuthApi(Resource):
         # todo check permission
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         tenant_id = user.current_tenant_id
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
@@ -791,8 +791,8 @@ class ToolOAuthCustomClient(Resource):
 
         user = current_user
 
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        # if not user.is_admin_or_owner:
+        #     raise Forbidden()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=user.current_tenant_id,

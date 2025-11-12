@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
 import {
   RiDeleteBinLine,
@@ -14,7 +14,7 @@ import {
 import AppIcon from '../base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import AppsContext from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -31,6 +31,7 @@ import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -63,6 +64,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
+  const { permissions } = usePermissionCheck()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [open, setOpen] = useState(openState)
@@ -73,6 +75,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
+
+  const mutateApps = useContextSelector(
+    AppsContext,
+    state => state.mutateApps,
+  )
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -102,6 +109,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.editDone'),
       })
       setAppDetail(app)
+      mutateApps()
     }
     catch {
       notify({ type: 'error', message: t('app.editFailed') })
@@ -126,8 +134,9 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      mutateApps()
       onPlanInfoChanged()
-      getRedirection(true, newApp, replace)
+      getRedirection(permissions, newApp, replace)
     }
     catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -203,13 +212,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     setShowConfirmDelete(false)
   }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
-
   if (!appDetail)
     return null
 
   const operations = [
-    {
+    permissions.applicationManagement.edit && {
       id: 'edit',
       title: t('app.editApp'),
       icon: <RiEditLine />,
@@ -219,7 +226,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         setShowEditModal(true)
       },
     },
-    {
+    permissions.applicationManagement.edit && {
       id: 'duplicate',
       title: t('app.duplicate'),
       icon: <RiFileCopy2Line />,
@@ -229,13 +236,13 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         setShowDuplicateModal(true)
       },
     },
-    {
+    permissions.applicationManagement.edit && {
       id: 'export',
       title: t('app.export'),
       icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+    permissions.applicationManagement.edit && (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
       id: 'import',
       title: t('workflow.common.importDSL'),
       icon: <RiFileUploadLine />,
@@ -245,7 +252,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         setShowImportDSLModal(true)
       },
     } : undefined,
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+    permissions.applicationManagement.edit && (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
       id: 'switch',
       title: t('app.switch'),
       icon: <RiExchange2Line />,
@@ -262,12 +269,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       {!onlyShowDetail && (
         <button type="button"
           onClick={() => {
-            if (isCurrentWorkspaceEditor)
+            if (permissions.applicationManagement.edit)
               setOpen(v => !v)
           }}
           className='block w-full'
         >
-          <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
+          <div className={cn('flex p-1 rounded-lg', open && 'bg-gray-100', permissions.applicationManagement.edit && 'hover:bg-gray-100 cursor-pointer')}>
             <div className='flex items-center gap-1'>
               <div className={cn(!expand && 'ml-1')}>
                 <AppIcon
@@ -296,9 +303,19 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             {expand && (
               <div className='flex flex-col items-start gap-1'>
                 <div className='flex w-full'>
-                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
+                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>
+                    {appDetail.name}
+                  </div>
                 </div>
-                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>
+                  {
+                    appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : 
+                    appDetail.mode === 'agent-chat' ? t('app.types.agent') : 
+                    appDetail.mode === 'chat' ? t('app.types.chatbot') : 
+                    appDetail.mode === 'completion' ? t('app.types.completion') : 
+                    t('app.types.workflow')
+                    }
+                </div>
               </div>
             )}
           </div>
@@ -322,13 +339,25 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               imageUrl={appDetail.icon_url}
             />
             <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
-              <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='system-md-semibold w-full truncate text-text-secondary'>
+                {appDetail.name}
+              </div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>
+                {
+                  appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : 
+                  appDetail.mode === 'agent-chat' ? t('app.types.agent') : 
+                  appDetail.mode === 'chat' ? t('app.types.chatbot') : 
+                  appDetail.mode === 'completion' ? t('app.types.completion') : 
+                  t('app.types.workflow')
+                }
+              </div>
             </div>
           </div>
           {/* description */}
           {appDetail.description && (
-            <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
+            <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>
+              {appDetail.description}
+            </div>
           )}
           {/* operations */}
           <AppOperations
@@ -342,21 +371,25 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
         />
         <Divider />
-        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
-          <Button
-            size={'medium'}
-            variant={'ghost'}
-            className='gap-0.5'
-            onClick={() => {
-              setOpen(false)
-              onDetailExpand?.(false)
-              setShowConfirmDelete(true)
-            }}
-          >
-            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
-            <span className='system-sm-medium text-text-tertiary'>{t('common.operation.deleteApp')}</span>
-          </Button>
-        </div>
+        {permissions.applicationManagement.edit && (
+          <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
+            <Button
+              size={'medium'}
+              variant={'ghost'}
+              className='gap-0.5'
+              onClick={() => {
+                setOpen(false)
+                onDetailExpand?.(false)
+                setShowConfirmDelete(true)
+              }}
+            >
+              <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
+              <span className='system-sm-medium text-text-tertiary'>
+                {t('common.operation.deleteApp')}
+              </span>
+            </Button>
+          </div>
+        )}
       </ContentDialog>
       {showSwitchModal && (
         <SwitchAppModal

@@ -21,7 +21,7 @@ type PanelProps = {
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
+  const { targetID, type, subtype, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
@@ -66,7 +66,7 @@ const Panel = (props: PanelProps) => {
   }
   const bind = async (tagIDs: string[]) => {
     try {
-      await bindTag(tagIDs, targetID, type)
+      await bindTag(tagIDs, targetID, type, subtype)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch {
@@ -75,7 +75,7 @@ const Panel = (props: PanelProps) => {
   }
   const unbind = async (tagID: string) => {
     try {
-      await unBindTag(tagID, targetID, type)
+      await unBindTag(tagID, targetID, type, subtype)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch {

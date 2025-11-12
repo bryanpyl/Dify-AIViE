@@ -3,16 +3,21 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { TextAreaRef } from 'rc-textarea'
 
 export const useTextAreaHeight = () => {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement | undefined>(undefined)
+  const textareaRef = useRef<TextAreaRef | null>(null)
   const textValueRef = useRef<HTMLDivElement>(null)
   const holdSpaceRef = useRef<HTMLDivElement>(null)
   const [isMultipleLine, setIsMultipleLine] = useState(false)
 
   const handleComputeHeight = useCallback(() => {
-    const textareaElement = textareaRef.current
+    const textareaElement = textareaRef.current?.resizableTextArea?.textArea
+    if (textareaElement) {
+      textareaElement.style.height = 'auto'
+      textareaElement.style.height = `${textareaElement.scrollHeight}px`
+    }
 
     if (wrapperRef.current && textareaElement && textValueRef.current && holdSpaceRef.current) {
       const { width: wrapperWidth } = wrapperRef.current.getBoundingClientRect()

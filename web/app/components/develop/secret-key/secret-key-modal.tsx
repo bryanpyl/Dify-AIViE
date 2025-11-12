@@ -1,5 +1,6 @@
 'use client'
 import {
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,21 +28,26 @@ import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
+import { ApiSourceType } from '@/app/components/develop/secret-key/secret-key-button'
 
 type ISecretKeyModalProps = {
   isShow: boolean
   appId?: string
   onClose: () => void
+  type: ApiSourceType
 }
 
 const SecretKeyModal = ({
   isShow = false,
   appId,
   onClose,
+  type,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace, isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions } = usePermissionCheck()
+  const { currentWorkspace } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -53,6 +59,20 @@ const SecretKeyModal = ({
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
 
   const [delKeyID, setDelKeyId] = useState('')
+
+  const [copyValue, setCopyValue] = useState('')
+
+  useEffect(() => {
+    if (copyValue) {
+      const timeout = setTimeout(() => {
+        setCopyValue('')
+      }, 1000)
+
+      return () => {
+        clearTimeout(timeout)
+      }
+    }
+  }, [copyValue])
 
   const onDel = async () => {
     setShowConfirmDelete(false)
@@ -106,7 +126,7 @@ const SecretKeyModal = ({
                   <div className='w-[200px] shrink-0 truncate px-3'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex grow space-x-2 px-3'>
                     <CopyFeedback content={api.token} />
-                    {isCurrentWorkspaceManager && (
+                    {permissions.applicationApiService.delete && (
                       <ActionButton
                         onClick={() => {
                           setDelKeyId(api.id)
@@ -123,12 +143,14 @@ const SecretKeyModal = ({
           </div>
         )
       }
-      <div className='flex'>
-        <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <PlusIcon className='mr-1 flex h-4 w-4 shrink-0' />
-          <div className='text-xs font-medium text-text-secondary'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
-        </Button>
-      </div>
+      {((type === ApiSourceType.app && permissions.applicationApiService.add) || (type === ApiSourceType.dataset && permissions.knowledgeApiService.add)) && (
+        <div className='flex'>
+          <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace}>
+            <PlusIcon className='mr-1 flex h-4 w-4 shrink-0' />
+            <div className='text-xs font-medium text-text-secondary'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
+          </Button>
+        </div>
+      )}
       <SecretKeyGenerateModal className='shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
       {showConfirmDelete && (
         <Confirm

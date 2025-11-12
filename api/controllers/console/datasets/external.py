@@ -77,8 +77,8 @@ class ExternalApiTemplateListApi(Resource):
         ExternalDatasetService.validate_api_list(args["settings"])
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
@@ -148,8 +148,8 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_operator):
-            raise Forbidden()
+        # if not (current_user.is_editor or current_user.is_dataset_operator):
+        #     raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
         return {"result": "success"}, 204
@@ -196,8 +196,8 @@ class ExternalDatasetCreateApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
@@ -215,8 +215,8 @@ class ExternalDatasetCreateApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         try:
             dataset = ExternalDatasetService.create_external_dataset(

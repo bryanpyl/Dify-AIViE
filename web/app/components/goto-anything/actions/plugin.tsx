@@ -1,5 +1,5 @@
 import type { ActionItem, PluginSearchResult } from './types'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/i18n-config'
 import Icon from '../../plugins/card/base/card-icon'
 import { postMarketplace } from '@/service/base'
 import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'

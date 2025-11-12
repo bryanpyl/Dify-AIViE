@@ -435,7 +435,7 @@ const CreateFormPipeline = () => {
                   <DataSourceOptions
                     datasourceNodeId={datasource?.nodeId || ''}
                     onSelect={handleSwitchDataSource}
-                    pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                    pipelineNodes={(pipelineInfo?.graph?.nodes || []) as Node<DataSourceNodeType>[]}
                   />
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile

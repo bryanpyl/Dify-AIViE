@@ -1,6 +1,8 @@
+import json
 import logging
 import re
 import time
+from datetime import datetime
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from threading import Thread
@@ -59,6 +61,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities import GraphRuntimeState
 from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
@@ -818,6 +821,14 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 # Handle all other events through elegant dispatch
                 case _:
+                    if event.node_type in [NodeType.BUTTON_RESPONSE]:
+                        self._base_task_pipeline._queue_manager.publish(QueueTextChunkEvent(text=json.dumps(event.outputs)), PublishFrom.TASK_PIPELINE)
+                        # self.button_response_answer = json.dumps(event.outputs)
+                        # self._task_state.answer=self.button_response_answer
+                        # yield self._message_cycle_manager._message_to_stream_response(
+                        #     answer=self.button_response_answer, message_id=self._message_id, from_variable_selector=None
+                        # )
+
                     if responses := list(
                         self._dispatch_event(
                             event,
@@ -847,6 +858,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
+        message.updated_at = datetime.utcnow().replace(microsecond=0)
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(

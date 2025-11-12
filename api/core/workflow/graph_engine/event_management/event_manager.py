@@ -8,7 +8,8 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import final
 
-from core.workflow.graph_events import GraphEngineEvent
+from core.workflow.graph_events import GraphEngineEvent, NodeRunSucceededEvent
+from core.workflow.enums import NodeType
 
 from ..layers.base import GraphEngineLayer
 
@@ -153,9 +154,30 @@ class EventManager:
                 yield event
                 yielded_count += 1
 
-            # Small sleep to avoid busy waiting
+                # Check if the event is a successful node run and it's a BUTTON_RESPONSE node
+                if (
+                    isinstance(event, NodeRunSucceededEvent)
+                    and getattr(event, "node_type", None) == NodeType.BUTTON_RESPONSE
+                ):
+                    # Safely extract the outputs dictionary
+                    outputs = getattr(event.route_node_state.node_run_result, "outputs", {}) or {}
+
+                    # Extract the answer value (if any)
+                    answer = outputs.get("answer", "")
+
+                    # Initialize outputs dict if not set yet, skip if runtime state is unavailable
+                    if not hasattr(self, "_graph_runtime_state"):
+                        continue
+
+                    if "answer" not in self._graph_runtime_state.outputs:
+                        self._graph_runtime_state.outputs["answer"] = ""
+
+                    # Update the "answer" field with the button response
+                    self._graph_runtime_state.outputs["answer"] = answer
+               
             if not self._execution_complete.is_set() and not new_events:
                 time.sleep(0.001)
+
 
     def _notify_layers(self, event: GraphEngineEvent) -> None:
         """

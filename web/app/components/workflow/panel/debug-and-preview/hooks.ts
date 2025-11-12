@@ -35,6 +35,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useHooksStore } from '../../hooks-store'
+import type { NodeTracing } from '@/types/workflow'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -102,6 +103,7 @@ export const useChat = (
           isAnswer: true,
           isOpeningStatement: true,
           suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
+          timestamp: config.created_at ? config.created_at : Math.floor(Date.now()/1000),
         })
       }
     }
@@ -215,6 +217,7 @@ export const useChat = (
       isAnswer: false,
       message_files: params.files,
       parentMessageId: params.parent_message_id,
+      timestamp: Math.floor(Date.now()/1000),
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -331,6 +334,7 @@ export const useChat = (
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+          responseItem.timestamp = Math.floor(Date.now()/1000)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -435,7 +439,17 @@ export const useChat = (
           })
         },
         onNodeRetry: ({ data }) => {
-          responseItem.workflowProcess!.tracing!.push(data)
+          if (data.iteration_id)
+            return
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
+          })
+          if (responseItem.workflowProcess!.tracing[currentIndex].retryDetail)
+            responseItem.workflowProcess!.tracing[currentIndex].retryDetail?.push(data as NodeTracing)
+          else
+            responseItem.workflowProcess!.tracing[currentIndex].retryDetail = [data as NodeTracing]
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -445,21 +459,32 @@ export const useChat = (
           })
         },
         onNodeFinished: ({ data }) => {
-          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
-          if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
-              ...data,
-            }
-            updateCurrentQAOnTree({
-              placeholderQuestionId,
-              questionItem,
-              responseItem,
-              parentId: params.parent_message_id,
-            })
-          }
+          if (data.iteration_id)
+            return
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
+          })
+          responseItem.workflowProcess!.tracing[currentIndex] = {
+            ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
+              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+              : {}),
+            ...(responseItem.workflowProcess!.tracing[currentIndex]?.retryDetail
+              ? { retryDetail: responseItem.workflowProcess!.tracing[currentIndex].retryDetail }
+              : {}),
+            ...data,
+          } as any
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onAgentLog: ({ data }) => {
+          if (data.iteration_id)
+            return
           const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           if (currentNodeIndex > -1) {
             const current = responseItem.workflowProcess!.tracing![currentNodeIndex]

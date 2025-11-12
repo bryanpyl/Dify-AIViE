@@ -92,11 +92,11 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   transpilePackages: ['echarts', 'zrender'],
-  turbopack: {
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack'
-    })
-  },
+  // turbopack: {
+  //   rules: codeInspectorPlugin({
+  //     bundler: 'turbopack'
+  //   })
+  // },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
@@ -117,12 +117,12 @@ const nextConfig = {
     ],
   },
   // fix all before production. Now it slow the develop speed.
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-    dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
-  },
+  // eslint: {
+  //   // Warning: This allows production builds to successfully complete even if
+  //   // your project has ESLint errors.
+  //   ignoreDuringBuilds: true,
+  //   dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
+  // },
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,

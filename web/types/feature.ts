@@ -39,6 +39,7 @@ export type SystemFeatures = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
+  enable_web_sso_switch_component?: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
@@ -71,6 +72,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   sso_enforced_for_web: false,
   sso_enforced_for_web_protocol: '',
   enable_marketplace: false,
+  enable_web_sso_switch_component: false,
   enable_change_email: false,
   enable_email_code_login: false,
   enable_email_password_login: false,

@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
+# proxy_mounts = (
+#     {
+#         "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
+#         "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
+#     }
+#     if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL
+#     else None
+# )
+
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
@@ -92,19 +101,28 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     retries = 0
     while retries <= max_retries:
         try:
-            response = client.request(method=method, url=url, **kwargs)
+            if dify_config.SSRF_PROXY_ALL_URL:
+                with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL) as client:
+                    response = client.request(method=method, url=url, **kwargs)
+            # elif proxy_mounts:
+            elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+                proxy_mounts = {
+                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
+                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
+                }
+                with httpx.Client(mounts=proxy_mounts) as client:
+                    response = client.request(method=method, url=url, **kwargs)
+            else:
+                with httpx.Client() as client:
+                    response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
-                logger.warning(
-                    "Received status code %s for URL %s which is in the force list",
-                    response.status_code,
-                    url,
-                )
+                logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
 
         except httpx.RequestError as e:
-            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
+            logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
             if max_retries == 0:
                 raise
 

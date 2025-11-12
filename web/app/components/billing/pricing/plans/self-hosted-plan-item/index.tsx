@@ -6,11 +6,11 @@ import { SelfHostedPlan } from '../../../type'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import Toast from '../../../../base/toast'
 import cn from '@/utils/classnames'
-import { useAppContext } from '@/context/app-context'
 import Button from './button'
 import List from './list'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const STYLE_MAP = {
   [SelfHostedPlan.community]: {
@@ -50,11 +50,11 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSuperadministrator } = usePermissionCheck()
 
   const handleGetPayUrl = useCallback(() => {
     // Only workspace manager can buy plan
-    if (!isCurrentWorkspaceManager) {
+    if (!isSuperadministrator) {
       Toast.notify({
         type: 'error',
         message: t('billing.buyPermissionDeniedTip'),
@@ -73,7 +73,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
 
     if (isEnterprisePlan)
       window.location.href = contactSalesUrl
-  }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
+  }, [isSuperadministrator, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
     <div className='relative flex flex-1 flex-col overflow-hidden'>

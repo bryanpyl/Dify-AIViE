@@ -129,6 +129,13 @@ from .workspace import (
     workspace,
 )
 
+# Import group controllers
+from .group import groups
+
+# Import role controllers
+from .role import roles
+
+
 api.add_namespace(console_ns)
 
 __all__ = [
@@ -204,4 +211,6 @@ __all__ = [
     "workflow_run",
     "workflow_statistic",
     "workspace",
+    'groups',
+    'roles',
 ]

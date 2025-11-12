@@ -1,10 +1,10 @@
-import type { AppMode } from '@/types/app'
+import { PermissionType } from "@/models/common"
 
 export const getRedirectionPath = (
-  isCurrentWorkspaceEditor: boolean,
-  app: { id: string, mode: AppMode },
+  permissions: PermissionType,
+  app: { id: string, mode: string },
 ) => {
-  if (!isCurrentWorkspaceEditor) {
+  if (!permissions) {
     return `/app/${app.id}/overview`
   }
   else {
@@ -16,10 +16,16 @@ export const getRedirectionPath = (
 }
 
 export const getRedirection = (
-  isCurrentWorkspaceEditor: boolean,
-  app: { id: string, mode: AppMode },
+  permissions: PermissionType,
+  app: any,
   redirectionFunc: (href: string) => void,
 ) => {
-  const redirectionPath = getRedirectionPath(isCurrentWorkspaceEditor, app)
-  redirectionFunc(redirectionPath)
+  if (permissions.applicationOrchestration.view){ 
+    if (app.mode === 'workflow' || app.mode === 'advanced-chat') redirectionFunc(`/app/${app.id}/workflow`)
+    else redirectionFunc (`/app/${app.id}/configuration`)
+  }
+  else {
+    if (permissions.applicationLogsAnnotation.view) redirectionFunc(`/app/${app.id}/logs`)
+    else redirectionFunc(`/app/${app.id}/overview`)
+  }
 }

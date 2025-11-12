@@ -5,6 +5,7 @@ import {
   RiArrowRightSLine,
 } from '@remixicon/react'
 import type {
+  CustomConfigurationModelFixedFields,
   Credential,
   ModelItem,
   ModelProvider,
@@ -20,22 +21,25 @@ import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type ModelListProps = {
   provider: ModelProvider
   models: ModelItem[]
   onCollapse: () => void
+  onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
   onChange?: (provider: string) => void
 }
 const ModelList: FC<ModelListProps> = ({
   provider,
   models,
   onCollapse,
+  onConfig,
   onChange,
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { permissions } = usePermissionCheck()
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
@@ -68,7 +72,7 @@ const ModelList: FC<ModelListProps> = ({
             </span>
           </span>
           {
-            isConfigurable && isCurrentWorkspaceManager && (
+            permissions.settingsModel.add && isConfigurable && (
               <div className='flex grow justify-end'>
                 <ManageCustomModelCredentials
                   provider={provider}
@@ -91,6 +95,7 @@ const ModelList: FC<ModelListProps> = ({
                 model,
                 provider,
                 isConfigurable,
+                onConfig,
                 onModifyLoadBalancing,
               }}
             />

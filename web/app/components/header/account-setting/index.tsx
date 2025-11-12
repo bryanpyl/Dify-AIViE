@@ -31,6 +31,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import Input from '@/app/components/base/input'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -51,29 +52,54 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = 'members',
+  activeTab = '',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  // const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
 
   const workplaceGroupItems = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
+    // if (isCurrentWorkspaceDatasetOperator)
+    //   return []
     return [
-      {
-        key: 'provider',
-        name: t('common.settings.provider'),
-        icon: <RiBrain2Line className={iconClassName} />,
-        activeIcon: <RiBrain2Fill className={iconClassName} />,
-      },
-      {
-        key: 'members',
-        name: t('common.settings.members'),
-        icon: <RiGroup2Line className={iconClassName} />,
-        activeIcon: <RiGroup2Fill className={iconClassName} />,
-      },
+      ...(permissions.settingsModel.view
+        ? [
+          {
+            key: 'provider',
+            name: t('common.settings.provider'),
+            icon: <RiBrain2Line className={iconClassName} />,
+            activeIcon: <RiBrain2Fill className={iconClassName} />,
+          },
+        ]
+        : []),
+      ...(permissions.settingsDataSource.view
+        ? [
+          {
+            key: 'data-source',
+            name: t('common.settings.dataSource'),
+            icon: <RiDatabase2Line className={iconClassName} />,
+            activeIcon: <RiDatabase2Fill className={iconClassName} />,
+          },
+        ]
+        : []),
+      ...(permissions.settingsApiExtension.view
+        ? [
+          {
+            key: 'api-based-extension',
+            name: t('common.settings.apiBasedExtension'),
+            icon: <RiPuzzle2Line className={iconClassName} />,
+            activeIcon: <RiPuzzle2Fill className={iconClassName} />,
+          },
+        ]
+        : []),
+      // {
+      //   key: 'members',
+      //   name: t('common.settings.members'),
+      //   icon: <RiGroup2Line className={iconClassName} />,
+      //   activeIcon: <RiGroup2Fill className={iconClassName} />,
+      // },
       {
         // Use key false to hide this item
         key: enableBilling ? 'billing' : false,
@@ -81,18 +107,6 @@ export default function AccountSetting({
         description: t('billing.plansCommon.receiptInfo'),
         icon: <RiMoneyDollarCircleLine className={iconClassName} />,
         activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
-      },
-      {
-        key: 'data-source',
-        name: t('common.settings.dataSource'),
-        icon: <RiDatabase2Line className={iconClassName} />,
-        activeIcon: <RiDatabase2Fill className={iconClassName} />,
-      },
-      {
-        key: 'api-based-extension',
-        name: t('common.settings.apiBasedExtension'),
-        icon: <RiPuzzle2Line className={iconClassName} />,
-        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
       },
       {
         key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
@@ -112,18 +126,18 @@ export default function AccountSetting({
       name: t('common.settings.workplaceGroup'),
       items: workplaceGroupItems,
     },
-    {
-      key: 'account-group',
-      name: t('common.settings.generalGroup'),
-      items: [
-        {
-          key: 'language',
-          name: t('common.settings.language'),
-          icon: <RiTranslate2 className={iconClassName} />,
-          activeIcon: <RiTranslate2 className={iconClassName} />,
-        },
-      ],
-    },
+    // {
+    //   key: 'account-group',
+    //   name: t('common.settings.generalGroup'),
+    //   items: [
+    //     {
+    //       key: 'language',
+    //       name: t('common.settings.language'),
+    //       icon: <RiTranslate2 className={iconClassName} />,
+    //       activeIcon: <RiTranslate2 className={iconClassName} />,
+    //     },
+    //   ],
+    // },
   ]
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
@@ -139,7 +153,8 @@ export default function AccountSetting({
     }
   }, [])
 
-  const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
+  const activeItem = [...menuItems[0].items].find(item => item.key === activeMenu)
+  // const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -155,7 +170,7 @@ export default function AccountSetting({
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-2'>
-                  {!isCurrentWorkspaceDatasetOperator && (
+                  {!isSystemRole && (
                     <div className='system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary'>{menuItem.name}</div>
                   )}
                   <div>

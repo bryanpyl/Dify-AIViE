@@ -25,6 +25,7 @@ export type AgentLogItem = {
 
 export type AgentLogItemWithChildren = AgentLogItem & {
   hasCircle?: boolean
+  iteration_id?: string
   children: AgentLogItemWithChildren[]
 }
 

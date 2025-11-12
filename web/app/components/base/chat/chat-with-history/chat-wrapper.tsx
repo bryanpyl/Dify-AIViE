@@ -67,8 +67,10 @@ const ChatWrapper = () => {
       },
       supportFeedback: true,
       opening_statement: isHistoryConversation ? currentConversationItem?.introduction : (config as any).opening_statement,
+      created_at: currentConversationItem?.created_at,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, isHistoryConversation])
+  }, [appParams, currentConversationItem?.introduction, currentConversationItem?.created_at, currentConversationId, isHistoryConversation])
+  
   const {
     chatList,
     setTargetMessageId,
@@ -77,6 +79,7 @@ const ChatWrapper = () => {
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
+    null,
     appConfig,
     {
       inputs: (isHistoryConversation ? currentConversationInputs : newConversationInputs) as any,

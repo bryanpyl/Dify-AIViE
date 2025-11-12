@@ -6,6 +6,7 @@ import NewDatasetCard from './new-dataset-card'
 import DatasetCard from './dataset-card'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   tags: string[]
@@ -19,7 +20,8 @@ const Datasets = ({
   includeAll,
 }: Props) => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
+  const { permissions, handleNoViewPermission } = usePermissionCheck()
+  const currentGroupId = useAppContextWithSelector(state => state.groupId)
   const {
     data: datasetList,
     fetchNextPage,
@@ -31,6 +33,7 @@ const Datasets = ({
     limit: 30,
     include_all: includeAll,
     keyword: keywords,
+    group_id: currentGroupId,
   })
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -53,10 +56,20 @@ const Datasets = ({
     return () => observerRef.current?.disconnect()
   }, [anchorRef, hasNextPage, isFetching, fetchNextPage])
 
+  if (!permissions.knowledgeManagement.view) {
+    return (
+      <>
+        {
+          handleNoViewPermission()
+        }
+      </>
+    )
+  }
+
   return (
     <>
       <nav className='grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-        {isCurrentWorkspaceEditor && <NewDatasetCard />}
+        {permissions.knowledgeManagement.add && <NewDatasetCard />}
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} />),
         ))}

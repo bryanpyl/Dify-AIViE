@@ -1,5 +1,6 @@
 import os
 from typing import Literal
+from models.account import Account
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
@@ -7,7 +8,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models.account import Account, TenantAccountJoin, TenantAccountRole
+
 
 
 class BillingService:
@@ -70,21 +71,21 @@ class BillingService:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         return response.json()
 
-    @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account):
-        tenant_id = current_user.current_tenant_id
+    # @staticmethod
+    # def is_tenant_owner_or_admin(current_user: Account):
+    #     tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = (
-            db.session.query(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .first()
-        )
+    #     join: TenantAccountJoin | None = (
+    #         db.session.query(TenantAccountJoin)
+    #         .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
+    #         .first()
+    #     )
 
-        if not join:
-            raise ValueError("Tenant account join not found")
+    #     if not join:
+    #         raise ValueError("Tenant account join not found")
 
-        if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
-            raise ValueError("Only team owner or team admin can perform this action")
+    #     if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
+    #         raise ValueError("Only team owner or team admin can perform this action")
 
     @classmethod
     def delete_account(cls, account_id: str):

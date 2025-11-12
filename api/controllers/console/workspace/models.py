@@ -46,7 +46,8 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -102,7 +103,8 @@ class ModelProviderModelApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         # To save the model's load balance configs
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -162,7 +164,8 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -254,7 +257,8 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -298,7 +302,8 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, provider: str):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -337,7 +342,8 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
@@ -369,7 +375,8 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")

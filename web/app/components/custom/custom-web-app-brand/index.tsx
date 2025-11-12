@@ -25,6 +25,7 @@ import {
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
@@ -35,8 +36,8 @@ const CustomWebAppBrand = () => {
   const {
     currentWorkspace,
     mutateCurrentWorkspace,
-    isCurrentWorkspaceManager,
   } = useAppContext()
+  const { isSystemRole } = usePermissionCheck()
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -45,7 +46,7 @@ const CustomWebAppBrand = () => {
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
   const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
-  const uploadDisabled = isSandbox || webappBrandRemoved || !isCurrentWorkspaceManager
+  const uploadDisabled = isSandbox || webappBrandRemoved || !isSystemRole
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -120,7 +121,7 @@ const CustomWebAppBrand = () => {
         <Switch
           size='l'
           defaultValue={webappBrandRemoved}
-          disabled={isSandbox || !isCurrentWorkspaceManager}
+          disabled={isSandbox || !isSystemRole}
           onChange={handleSwitch}
         />
       </div>
@@ -182,7 +183,7 @@ const CustomWebAppBrand = () => {
                 <Button
                   className='mr-2'
                   onClick={handleCancel}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !isSystemRole}
                 >
                   {t('common.operation.cancel')}
                 </Button>
@@ -190,7 +191,7 @@ const CustomWebAppBrand = () => {
                   variant='primary'
                   className='mr-2'
                   onClick={handleApply}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !isSystemRole}
                 >
                   {t('custom.apply')}
                 </Button>

@@ -201,7 +201,7 @@ class Dataset(Base):
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
-                Tag.type == "knowledge",
+                Tag.type == "group",
             )
             .all()
         )
@@ -927,6 +927,7 @@ class DatasetQuery(Base):
     id = mapped_column(StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
     content = mapped_column(sa.Text, nullable=False)
+    answer = mapped_column(db.Text, nullable=True)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id = mapped_column(StringUUID, nullable=True)
     created_by_role = mapped_column(String, nullable=False)

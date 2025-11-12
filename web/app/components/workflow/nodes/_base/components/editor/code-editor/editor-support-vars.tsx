@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
@@ -27,8 +27,8 @@ const CodeEditor: FC<Props> = ({
 
   const isLeftBraceRef = useRef(false)
 
-  const editorRef = useRef(null)
-  const monacoRef = useRef(null)
+  const editorRef = useRef<HTMLTextAreaElement>(null)
+  const debounceRef = useRef<number | null>(null)
 
   const popupRef = useRef<HTMLDivElement>(null)
   const [isShowVarPicker, {
@@ -39,66 +39,98 @@ const CodeEditor: FC<Props> = ({
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 })
 
   // Listen for cursor position changes
-  const handleCursorPositionChange = (event: any) => {
-    const editor: any = editorRef.current
-    const { position } = event
-    const text = editor.getModel().getLineContent(position.lineNumber)
-    const charBefore = text[position.column - 2]
-    if (['/', '{'].includes(charBefore)) {
-      isLeftBraceRef.current = charBefore === '{'
-      const editorRect = editor.getDomNode().getBoundingClientRect()
-      const cursorCoords = editor.getScrolledVisiblePosition(position)
-
-      const popupX = editorRect.left + cursorCoords.left
-      const popupY = editorRect.top + cursorCoords.top + 20 // Adjust the vertical position as needed
-
-      setPopupPosition({ x: popupX, y: popupY })
-      showVarPicker()
+   const handleCursorPositionChange = useCallback(() => {
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
     }
-    else {
-      hideVarPicker()
-    }
-  }
 
+    // Debounce the heavy calculation
+    debounceRef.current = window.setTimeout(() => {
+      const textarea = editorRef.current
+      if (!textarea) return
+
+      const { selectionStart, value } = textarea
+      const charBefore = value[selectionStart - 1]
+      
+      if (['/', '{'].includes(charBefore)) {
+        isLeftBraceRef.current = charBefore === '{'
+        
+        // Only calculate position if we're showing the picker
+        if (!isShowVarPicker) {
+          // Simple position calculation
+          const textareaRect = textarea.getBoundingClientRect()
+          const textBeforeCursor = value.slice(0, selectionStart)
+          const lines = textBeforeCursor.split('\n')
+          const currentLineLength = lines[lines.length - 1].length
+          
+          const lineHeight = 18
+          const charWidth = 8
+          
+          const popupX = Math.min(
+            textareaRect.left + (currentLineLength * charWidth),
+            window.innerWidth - 250 // Approximate popup width
+          )
+          const popupY = Math.min(
+            textareaRect.top + ((lines.length - 1) * lineHeight) + 20,
+            window.innerHeight - 200 // Approximate popup height
+          )
+
+          // Single state update
+          setPopupPosition({ x: popupX, y: popupY })
+          showVarPicker()
+        }
+      } else {
+        hideVarPicker()
+      }
+    }, 100) // 100ms debounce
+  }, [isShowVarPicker, showVarPicker, hideVarPicker])
+
+  // Cleanup debounce on unmount
   useEffect(() => {
-    if (isShowVarPicker && popupRef.current) {
-      const windowWidth = window.innerWidth
-      const { width, height } = popupRef.current!.getBoundingClientRect()
-      const newPopupPosition = { ...popupPosition }
-      if (popupPosition.x + width > windowWidth - TO_WINDOW_OFFSET)
-        newPopupPosition.x = windowWidth - width - TO_WINDOW_OFFSET
-
-      if (popupPosition.y + height > window.innerHeight - TO_WINDOW_OFFSET)
-        newPopupPosition.y = window.innerHeight - height - TO_WINDOW_OFFSET
-
-      if (newPopupPosition.x !== popupPosition.x || newPopupPosition.y !== popupPosition.y)
-        setPopupPosition(newPopupPosition)
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
     }
-  }, [isShowVarPicker, popupPosition])
+  }, [])
 
-  const onEditorMounted = (editor: any, monaco: any) => {
-    editorRef.current = editor
-    monacoRef.current = monaco
-    editor.onDidChangeCursorPosition(handleCursorPositionChange)
-  }
+  // Handle when the textarea is mounted
+  const onEditorMounted = useCallback((textarea: HTMLTextAreaElement) => {
+    editorRef.current = textarea
+    
+    if (!textarea) return
 
-  const getUniqVarName = (varName: string) => {
+    // Only listen to keyup to reduce event frequency
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Only trigger on specific keys that might add trigger characters
+      if (e.key === '/' || e.key === '{' || e.key === 'Backspace' || e.key === 'Delete') {
+        handleCursorPositionChange()
+      }
+    }
+
+    textarea.addEventListener('keyup', handleKeyUp)
+
+    // Cleanup function
+    return () => {
+      textarea.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [handleCursorPositionChange])
+
+  const getUniqVarName = useCallback((varName: string): string => {
     if (varList.find(v => v.variable === varName)) {
       const match = varName.match(/_(\d+)$/)
-
-      const index = (() => {
-        if (match)
-          return Number.parseInt(match[1]!) + 1
-
-        return 1
-      })()
+      const index = match ? parseInt(match[1]!) + 1 : 1
       return getUniqVarName(`${varName.replace(/_(\d+)$/, '')}_${index}`)
     }
     return varName
-  }
+  }, [varList])
 
-  const getVarName = (varValue: string[]) => {
-    const existVar = varList.find(v => Array.isArray(v.value_selector) && v.value_selector.join('@@@') === varValue.join('@@@'))
+  const getVarName = useCallback((varValue: string[]) => {
+    const existVar = varList.find(v => 
+      Array.isArray(v.value_selector) && 
+      v.value_selector.join('@@@') === varValue.join('@@@')
+    )
     if (existVar) {
       return {
         name: existVar.variable,
@@ -110,33 +142,47 @@ const CodeEditor: FC<Props> = ({
       name: getUniqVarName(varName),
       isExist: false,
     }
-  }
+  }, [varList, getUniqVarName])
 
-  const handleSelectVar = (varValue: string[]) => {
+  const handleSelectVar = useCallback((varValue: string[]) => {
     const { name, isExist } = getVarName(varValue)
-    if (!isExist) {
+    
+    if (!isExist && onAddVar) {
       const newVar: Variable = {
         variable: name,
         value_selector: varValue,
       }
-
-      onAddVar?.(newVar)
+      onAddVar(newVar)
     }
-    const editor: any = editorRef.current
-    const monaco: any = monacoRef.current
-    const position = editor?.getPosition()
 
-    // Insert the content at the cursor position
-    editor?.executeEdits('', [
-      {
-        // position.column - 1 to remove the text before the cursor
-        range: new monaco.Range(position.lineNumber, position.column - 1, position.lineNumber, position.column),
-        text: `{{ ${name} }${!isLeftBraceRef.current ? '}' : ''}`, // left brace would auto add one right brace
-      },
-    ])
+    const textarea = editorRef.current
+    if (!textarea) return
+
+    const { selectionStart, selectionEnd, value } = textarea
+    
+    // Remove the trigger character and insert variable
+    const textBefore = value.slice(0, selectionStart - 1)
+    const textAfter = value.slice(selectionEnd)
+    const insertText = `{{ ${name} }${!isLeftBraceRef.current ? '}' : ''}`
+    
+    const newValue = textBefore + insertText + textAfter
+    const newCursorPosition = textBefore.length + insertText.length
+
+    // Update textarea
+    textarea.value = newValue
+    textarea.selectionStart = newCursorPosition
+    textarea.selectionEnd = newCursorPosition
+
+    // Trigger updates
+    editorProps.onChange?.(newValue)
+    
+    // Single input event dispatch
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
 
     hideVarPicker()
-  }
+    textarea.focus()
+  }, [getVarName, onAddVar, editorProps.onChange, hideVarPicker])
+
 
   return (
     <div className={cn(editorProps.isExpand && 'h-full')}>

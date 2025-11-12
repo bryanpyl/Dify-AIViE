@@ -5,13 +5,20 @@ import { RiKey2Line } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 
+export enum ApiSourceType {
+  app = 'app',
+  dataset = 'dataset',
+}
+
 type ISecretKeyButtonProps = {
   className?: string
   appId?: string
+  iconCls?: string
   textCls?: string
+  type: ApiSourceType
 }
 
-const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) => {
+const SecretKeyButton = ({ className, appId, iconCls, textCls, type }: ISecretKeyButtonProps) => {
   const [isVisible, setVisible] = useState(false)
   const { t } = useTranslation()
   return (
@@ -27,7 +34,7 @@ const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) =
         </div>
         <div className={`system-xs-medium px-[3px] text-text-tertiary ${textCls}`}>{t('appApi.apiKey')}</div>
       </Button>
-      <SecretKeyModal isShow={isVisible} onClose={() => setVisible(false)} appId={appId} />
+      <SecretKeyModal isShow={isVisible} onClose={() => setVisible(false)} appId={appId} type={type} />
     </>
   )
 }

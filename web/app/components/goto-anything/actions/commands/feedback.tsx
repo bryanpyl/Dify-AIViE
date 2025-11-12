@@ -1,7 +1,7 @@
 import type { SlashCommandHandler } from './types'
 import React from 'react'
 import { RiFeedbackLine } from '@remixicon/react'
-import i18n from '@/i18n-config/i18next-config'
+import i18n from '@/i18n/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Feedback command dependency types

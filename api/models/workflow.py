@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
@@ -347,7 +347,7 @@ class Workflow(Base):
         is the one being used by the tool.
 
         For accurate checking, use a direct query with tenant_id, app_id, and version.
-        """
+        """ 
         from models.tools import WorkflowToolProvider
 
         stmt = select(
@@ -639,7 +639,43 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
     RAG_PIPELINE_RUN = "rag-pipeline-run"
+    
+    @classmethod
+    def value_of(cls, value: str) -> "WorkflowNodeExecutionTriggeredFrom":
+        """
+        Get value of given mode.
 
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f"invalid workflow node execution triggered from value {value}")
+
+class WorkflowNodeExecutionStatus(StrEnum):
+    """
+    Workflow Node Execution Status Enum
+    """
+
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    EXCEPTION = "exception"
+    RETRY = "retry"
+
+    @classmethod
+    def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f"invalid workflow node execution status value {value}")
 
 class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offload_data` preloaded in most cases.
     """

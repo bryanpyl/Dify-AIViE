@@ -1,4 +1,5 @@
 'use client'
+import type { HTMLProps } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,12 @@ import {
   RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
+import {
+  Cog8ToothIcon,
+  DocumentTextIcon,
+  PaintBrushIcon,
+  RocketLaunchIcon,
+} from '@heroicons/react/24/outline'
 import SettingsModal from './settings'
 import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
@@ -30,9 +37,8 @@ import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Confirm from '@/app/components/base/confirm'
 import ShareQRCode from '@/app/components/base/qrcode'
-import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
+import SecretKeyButton, { ApiSourceType } from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -40,6 +46,7 @@ import { AccessMode } from '@/models/access-control'
 import AccessControl from '../app-access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 export type IAppCardProps = {
   className?: string
@@ -50,6 +57,10 @@ export type IAppCardProps = {
   onChangeStatus: (val: boolean) => Promise<void>
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onGenerateCode?: () => Promise<void>
+}
+
+const EmbedIcon = ({ className = '' }: HTMLProps<HTMLDivElement>) => {
+  return <div className={`${style.codeBrowserIcon} ${className}`}></div>
 }
 
 function AppCard({
@@ -64,7 +75,7 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions } = usePermissionCheck()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -81,26 +92,30 @@ function AppCard({
     const operationsMap = {
       webapp: [
         { opName: t('appOverview.overview.appInfo.launch'), opIcon: RiExternalLinkLine },
+        { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
+        // ((appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') && { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon }),
+        { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
+        // ...(permissions.applicationSiteManagement.edit ? [{ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: PaintBrushIcon },] : []),
       ] as { opName: string; opIcon: any }[],
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
       app: [],
     }
-    if (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
+    if (permissions.applicationSiteManagement.view && appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: RiWindowLine })
 
     operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: RiPaintBrushLine })
 
-    if (isCurrentWorkspaceEditor)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: RiEqualizer2Line })
+    // if (permissions.applicationSiteManagement.edit)
+    //   operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
 
     return operationsMap
-  }, [isCurrentWorkspaceEditor, appInfo, t])
+  }, [permissions, appInfo, t])
 
   const isApp = cardType === 'webapp'
   const basicName = isApp
     ? appInfo?.site?.title
     : t('appOverview.overview.apiInfo.title')
-  const toggleDisabled = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
+  const toggleDisabled = isApp ? !permissions.applicationSiteManagement.edit : !permissions.applicationApiService.edit
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
@@ -175,9 +190,9 @@ function AppCard({
   return (
     <div
       className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''}`}
+        `${isInPanel ? 'flex-1 border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''}`}
     >
-      <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
+      <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl h-full`}>
         <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
           <div className='flex w-full items-center gap-3 self-stretch'>
             <AppBasic
@@ -234,7 +249,7 @@ function AppCard({
                   onCancel={() => setShowConfirmDelete(false)}
                 />
               )}
-              {isApp && isCurrentWorkspaceManager && (
+              {isApp && permissions.applicationSiteManagement.edit && (
                 <Tooltip
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
@@ -288,8 +303,8 @@ function AppCard({
           </div>}
         </div>
         <div className={'flex items-center gap-1 self-stretch p-3'}>
-          {!isApp && <SecretKeyButton appId={appInfo.id} />}
-          {OPERATIONS_MAP[cardType].map((op) => {
+          {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} type={ApiSourceType.app} />}
+          {OPERATIONS_MAP[cardType].map((op, index) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false
@@ -299,7 +314,7 @@ function AppCard({
                 className="mr-1 min-w-[88px]"
                 size="small"
                 variant={'ghost'}
-                key={op.opName}
+                key={`${op.opName}-${index}`}
                 onClick={genClickFuncByName(op.opName)}
                 disabled={disabled}
               >
@@ -328,6 +343,7 @@ function AppCard({
               isShow={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}
               onSave={onSaveSiteConfig}
+              readOnly={!permissions.applicationSiteManagement.edit}
             />
             <EmbeddedModal
               siteInfo={appInfo.site}

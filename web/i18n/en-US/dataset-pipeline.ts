@@ -151,12 +151,12 @@ const translation = {
   configurationTip: 'Configure {{pluginName}}',
   conversion: {
     title: 'Convert to Knowledge Pipeline',
-    descriptionChunk1: 'You can now convert your existing knowledge base to use the Knowledge Pipeline for document processing',
+    descriptionChunk1: 'You can now convert your existing knowledge base to use the Knowledge Pipeline for document processing.',
     descriptionChunk2: ' — a more open and flexible approach with access to plugins from our marketplace. This will apply the new processing method to all future documents.',
     warning: 'This action cannot be undone.',
     confirm: {
       title: 'Confirmation',
-      content: 'This action is permanent. You won\'t be able to revert to the previous method.Please confirm to convert.',
+      content: 'This action is permanent. You won\'t be able to revert to the previous method. Please confirm to convert.',
     },
     errorMessage: 'Failed to convert the dataset to a pipeline',
     successMessage: 'Successfully converted the dataset to a pipeline',

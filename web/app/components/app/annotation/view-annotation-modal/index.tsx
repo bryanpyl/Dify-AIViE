@@ -15,6 +15,7 @@ import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   appId: string
@@ -42,6 +43,7 @@ const ViewAnnotationModal: FC<Props> = ({
   const [newQuestion, setNewQuery] = useState(question)
   const [newAnswer, setNewAnswer] = useState(answer)
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const { formatTime } = useTimestamp()
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
@@ -99,11 +101,13 @@ const ViewAnnotationModal: FC<Props> = ({
       <EditItem
         type={EditItemType.Query}
         content={question}
+        readonly={!permissions.applicationLogsAnnotation.edit}
         onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
       />
       <EditItem
         type={EditItemType.Answer}
         content={answer}
+        readonly={!permissions.applicationLogsAnnotation.edit}
         onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
       />
     </>
@@ -196,20 +200,24 @@ const ViewAnnotationModal: FC<Props> = ({
         foot={id
           ? (
             <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
-              <div
-                className='flex cursor-pointer items-center space-x-2 pl-3'
-                onClick={() => setShowModal(true)}
-              >
-                <MessageCheckRemove />
-                <div>{t('appAnnotation.editModal.removeThisCache')}</div>
-              </div>
+              {
+                permissions.applicationLogsAnnotation.delete && (
+                  <div
+                    className='flex cursor-pointer items-center space-x-2 pl-3'
+                    onClick={() => setShowModal(true)}
+                  >
+                    <MessageCheckRemove />
+                    <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+                  </div>
+                )
+              } 
               <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>
             </div>
           )
           : undefined}
       />
     </div>
-
+    
   )
 }
 export default React.memo(ViewAnnotationModal)

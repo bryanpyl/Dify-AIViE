@@ -9,7 +9,7 @@ import Footer from './footer'
 import { PlanRange } from './plan-switcher/plan-range-switcher'
 import { useKeyPress } from 'ahooks'
 import { useProviderContext } from '@/context/provider-context'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { NoiseBottom, NoiseTop } from './assets'
 
@@ -23,10 +23,10 @@ const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
   const { plan } = useProviderContext()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSuperadministrator } = usePermissionCheck()
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>('cloud')
-  const canPay = isCurrentWorkspaceManager
+  const canPay = isSuperadministrator
 
   useKeyPress(['esc'], onCancel)
 

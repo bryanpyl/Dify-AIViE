@@ -12,6 +12,7 @@ import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { get } from '@/service/base'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
@@ -29,6 +30,7 @@ import { SimpleSelect } from '../../base/select'
 import StatusItem from './detail/completed/status-item'
 import type { Item } from '@/app/components/base/select'
 import { useIndexStatus } from './status-item/hooks'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -59,18 +61,30 @@ const NotionIcon = ({ className }: React.SVGProps<SVGElement>) => {
 
 const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' | 'sync' }> = ({ canAdd = true, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   return <div className={s.emptyWrapper}>
     <div className={s.emptyElement}>
-      <div className={s.emptySymbolIconWrapper}>
-        {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
-      </div>
-      <span className={s.emptyTitle}>{t('datasetDocuments.list.empty.title')}<ThreeDotsIcon className='relative -left-1.5 -top-3 inline' /></span>
-      <div className={s.emptyTip}>
-        {t(`datasetDocuments.list.empty.${type}.tip`)}
-      </div>
-      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn} variant='secondary-accent'>
-        <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
-      </Button>}
+      {permissions.knowledgeDocumentManagement.add ? (
+        <>
+          <div className={s.emptySymbolIconWrapper}>
+            {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
+          </div>
+          <span className={s.emptyTitle}>{t('datasetDocuments.list.empty.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
+          <div className={s.emptyTip}>
+            {t(`datasetDocuments.list.empty.${type}.tip`)}
+          </div>
+          {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn}>
+            <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
+          </Button>}
+        </>
+      ) : (
+        <>
+          <span className={s.emptyTitle}>{t('datasetDocuments.list.empty.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
+          <div className={s.emptyTip}>
+            {t(`datasetDocuments.list.empty.${type}.tip`)}
+          </div>
+        </>
+      )}
     </div>
   </div>
 }
@@ -79,8 +93,12 @@ type IDocumentsProps = {
   datasetId: string
 }
 
+export const fetcher = (url: string) => get(url, {}, {})
+const DEFAULT_LIMIT = 15
+
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const docLink = useDocLink()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
@@ -265,14 +283,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         <h1 className='text-base font-semibold text-text-primary'>{t('datasetDocuments.list.title')}</h1>
         <div className='flex items-center space-x-0.5 text-sm font-normal text-text-tertiary'>
           <span>{t('datasetDocuments.list.desc')}</span>
-          <a
+          {/* <a
             className='flex items-center text-text-accent'
             target='_blank'
             href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
           >
             <span>{t('datasetDocuments.list.learnMore')}</span>
             <RiExternalLinkLine className='h-3 w-3' />
-          </a>
+          </a> */}
         </div>
       </div>
       <div className='flex flex-1 flex-col px-6 py-4'>
@@ -321,7 +339,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 onIsBuiltInEnabledChange={setBuiltInEnabled}
               />
             )}
-            {embeddingAvailable && (
+            {embeddingAvailable && permissions.knowledgeDocumentManagement.add && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className={cn('mr-2 h-4 w-4 stroke-current')} />
                 {isDataSourceNotion && t('datasetDocuments.list.addPages')}

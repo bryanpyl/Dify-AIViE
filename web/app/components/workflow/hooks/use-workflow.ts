@@ -464,13 +464,14 @@ export const useFetchToolsData = () => {
 export const useWorkflowReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const workflowEditPermission= useStore(s=>s.workflowEditPermission)
 
   const getWorkflowReadOnly = useCallback(() => {
     return workflowStore.getState().workflowRunningData?.result.status === WorkflowRunningStatus.Running
   }, [workflowStore])
 
   return {
-    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running ||!workflowEditPermission,
     getWorkflowReadOnly,
   }
 }
@@ -480,6 +481,7 @@ export const useNodesReadOnly = () => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
+  const workflowEditPermission= useStore(s=>s.workflowEditPermission)
 
   const getNodesReadOnly = useCallback(() => {
     const {
@@ -488,11 +490,11 @@ export const useNodesReadOnly = () => {
       isRestoring,
     } = workflowStore.getState()
 
-    return workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring
-  }, [workflowStore])
+    return workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring || !workflowEditPermission
+  }, [workflowStore, workflowEditPermission])
 
   return {
-    nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
+    nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring ||!workflowEditPermission),
     getNodesReadOnly,
   }
 }

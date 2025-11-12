@@ -155,8 +155,8 @@ class ChatMessageApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        # if not current_user.has_edit_permission:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")

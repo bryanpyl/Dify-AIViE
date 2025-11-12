@@ -19,7 +19,7 @@ const Explore: FC<IExploreProps> = ({
 }) => {
   const router = useRouter()
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = useState(0)
-  const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { userProfile } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
   const [isFetchingInstalledApps, setIsFetchingInstalledApps] = useState(false)
@@ -37,10 +37,10 @@ const Explore: FC<IExploreProps> = ({
     })()
   }, [])
 
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
+  // useEffect(() => {
+  //   if (isCurrentWorkspaceDatasetOperator)
+  //     return router.replace('/datasets')
+  // }, [isCurrentWorkspaceDatasetOperator])
 
   return (
     <div className='flex h-full overflow-hidden border-t border-divider-regular bg-background-body'>

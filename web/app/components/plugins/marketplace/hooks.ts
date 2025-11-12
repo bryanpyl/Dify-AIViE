@@ -17,7 +17,7 @@ import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
 } from './utils'
-import i18n from '@/i18n-config/i18next-config'
+import i18n from '@/i18n/i18n-config/i18next-config'
 import {
   useMutationPluginsFromMarketplace,
 } from '@/service/use-plugins'

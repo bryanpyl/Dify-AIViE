@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import login_required
 from models import Account, App
+from models.model import Role, RoleAccountJoin, GroupBinding, DefaultRoles
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -93,9 +94,16 @@ class AppListApi(Resource):
 
         args = parser.parse_args()
 
+        group_id = None
+
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
+            group = db.session.query(GroupBinding).filter(GroupBinding.target_id == current_user.id).first()
+            group_id = group.group_id
+
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_user.current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_user.current_tenant_id, group_id, args)
         if not app_pagination:
             return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
 
@@ -146,8 +154,8 @@ class AppListApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         if "mode" not in args or args["mode"] is None:
             raise BadRequest("mode is required")
@@ -178,7 +186,19 @@ class AppApi(Resource):
         """Get app detail"""
         app_service = AppService()
 
+        current_user_group = db.session.query(GroupBinding.group_id).filter(GroupBinding.target_id==current_user.id, GroupBinding.type=='user').scalar()
+        
+        if current_user_group:
+            app_group_id = db.session.query(GroupBinding).filter(GroupBinding.target_id==app_model.id, GroupBinding.group_id==current_user_group, GroupBinding.type=='app').first()
+            app_accessible = True if (app_group_id) else False
+        else:
+            current_user_role = db.session.query(RoleAccountJoin.role_id).filter(RoleAccountJoin.account_id==current_user.id).scalar()
+            if (current_user_role):
+                current_role_name = db.session.query(Role.name).filter(Role.id==current_user_role).scalar()
+                app_accessible = True if current_role_name==DefaultRoles.SUPERADMINISTRATOR or current_role_name == DefaultRoles.SYSTEM_OPERATOR else False
+
         app_model = app_service.get_app(app_model)
+        app_model.accessible = app_accessible
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
@@ -214,8 +234,8 @@ class AppApi(Resource):
     def put(self, app_model):
         """Update app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
@@ -256,8 +276,8 @@ class AppApi(Resource):
     def delete(self, app_model):
         """Delete app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         app_service = AppService()
         app_service.delete_app(app_model)
@@ -292,8 +312,8 @@ class AppCopyApi(Resource):
     def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, location="json")
@@ -348,8 +368,8 @@ class AppExportApi(Resource):
     def get(self, app_model):
         """Export app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         # Add include_secret params
         parser = reqparse.RequestParser()
@@ -378,8 +398,8 @@ class AppNameApi(Resource):
     @marshal_with(app_detail_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
@@ -415,8 +435,8 @@ class AppIconApi(Resource):
     @marshal_with(app_detail_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("icon", type=str, location="json")
@@ -448,8 +468,8 @@ class AppSiteStatus(Resource):
     @marshal_with(app_detail_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("enable_site", type=bool, required=True, location="json")
@@ -480,8 +500,8 @@ class AppApiStatus(Resource):
     @marshal_with(app_detail_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        # if not current_user.is_admin_or_owner:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("enable_api", type=bool, required=True, location="json")
@@ -527,8 +547,8 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")
         parser.add_argument("tracing_provider", type=str, required=True, location="json")

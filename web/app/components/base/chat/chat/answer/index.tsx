@@ -2,12 +2,13 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import { AivieAppType } from '@/types/app'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -19,9 +20,12 @@ import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
+import ChatThinking from '@/app/components/base/chat-thinking'
+import { useEmbeddedChatbotContext } from '../../embedded-chatbot/context'
 
 type AnswerProps = {
   item: ChatItem
@@ -61,8 +65,13 @@ const Answer: FC<AnswerProps> = ({
     workflowProcess,
     allFiles,
     message_files,
+    nodeResponse,
+    timestamp,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
+  const {avatarName} = useEmbeddedChatbotContext()
+
+  const aivieApp = appData?.site?.title.includes(AivieAppType.Dayang)?AivieAppType.Dayang:AivieAppType.other;
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
@@ -76,6 +85,15 @@ const Answer: FC<AnswerProps> = ({
   useEffect(() => {
     getContainerWidth()
   }, [])
+
+  const isJsonContent = useMemo(()=>{
+    try{
+      JSON.parse(content)
+      return true
+    }catch(error){
+      return false
+    }
+  },[content])
 
   const getContentWidth = () => {
     if (contentRef.current)
@@ -110,6 +128,7 @@ const Answer: FC<AnswerProps> = ({
   return (
     <div className='mb-2 flex last:mb-0'>
       <div className='relative h-10 w-10 shrink-0'>
+         {/* {aivieApp===AivieAppType.Dayang?<AnswerIcon iconType='image' imageUrl={appData?.site.icon_url}/>:<AnswerIcon/>} */}
         {answerIcon || <AnswerIcon />}
         {responding && (
           <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
@@ -121,7 +140,7 @@ const Answer: FC<AnswerProps> = ({
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-chat-bubble-bg rounded-2xl border border-gray-200 shadow-md body-lg-regular text-text-primary w-full', workflowProcess && 'w-full')}
           >
             {
               !responding && (
@@ -137,9 +156,20 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
-            {/** Render workflow process */}
+            {/** Render the normal steps */}
             {
-              workflowProcess && (
+              workflowProcess && !hideProcessDetail && (
+                <WorkflowProcessItem
+                data={workflowProcess}
+                item={item}
+                hideProcessDetail={hideProcessDetail}
+              />
+                
+              )
+            }
+            {/** Hide workflow steps by its settings in siteInfo */}
+            {
+              workflowProcess && !hideProcessDetail && appData?.site.show_workflow_steps && (
                 <WorkflowProcessItem
                   data={workflowProcess}
                   item={item}
@@ -148,16 +178,18 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
+            {/* Render workflow process */}
             {
               responding && !content && !hasAgentThoughts && (
-                <div className='flex h-5 w-6 items-center justify-center'>
-                  <LoadingAnim type='text' />
-                </div>
+                 <ChatThinking app_agent={avatarName}/>
+                // <div className='flex items-center justify-center w-6 h-5'>
+                //   <LoadingAnim type='text' />
+                // </div>
               )
             }
             {
-              content && !hasAgentThoughts && (
-                <BasicContent item={item} />
+              !isJsonContent&&content && !hasAgentThoughts && (
+                <BasicContent item={item} aivieAppType={avatarName} botResponse={true} />
               )
             }
             {
@@ -199,7 +231,7 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
-            <SuggestedQuestions item={item} />
+            <SuggestedQuestions item={item} buttonResponse={isJsonContent} />
             {
               !!citation?.length && !responding && (
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
@@ -218,6 +250,15 @@ const Answer: FC<AnswerProps> = ({
             }
           </div>
         </div>
+        <p className='mt-2 system-2xs-semibold-uppercase text-text-tertiary'>
+          {timestamp
+            ? new Date(timestamp * 1000).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })
+            : ''}
+        </p>
         <More more={more} />
       </div>
     </div>

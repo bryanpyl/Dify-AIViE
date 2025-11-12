@@ -96,11 +96,13 @@ dataset_detail_fields = {
     "total_documents": fields.Integer,
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
+    "is_selected": fields.Boolean,
 }
 
 dataset_query_detail_fields = {
     "id": fields.String,
     "content": fields.String,
+    "answer": fields.String,
     "source": fields.String,
     "source_app_id": fields.String,
     "created_by_role": fields.String,

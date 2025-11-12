@@ -41,8 +41,8 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        # if not current_user.is_admin_or_owner:
+        #     raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("category", type=str, required=True, nullable=False, location="json")
         parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
@@ -63,8 +63,8 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @account_initialization_required
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        # if not current_user.is_admin_or_owner:
+        #     raise Forbidden()
 
         ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
 

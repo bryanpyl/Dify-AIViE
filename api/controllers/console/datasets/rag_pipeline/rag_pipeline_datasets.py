@@ -52,8 +52,8 @@ class CreateRagPipelineDatasetApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         rag_pipeline_dataset_create_entity = RagPipelineDatasetCreateEntity(
             name="",
             description="",
@@ -93,8 +93,8 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(
             tenant_id=current_user.current_tenant_id,
             rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(

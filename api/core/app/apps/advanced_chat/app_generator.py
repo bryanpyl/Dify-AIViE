@@ -7,7 +7,7 @@ from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
@@ -587,6 +587,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param workflow_node_execution_repository: optional repository for workflow node execution
         :return:
         """
+        try:
+            insp = inspect(user)
+            if not insp.persistent and not insp.detached:
+                pass  # already bound to a session
+            elif insp.detached:
+                # reattach to current session
+                user = db.session.merge(user)
+        except Exception:
+            # if user is a simple dataclass-like object or not a SQLAlchemy model
+            pass
         # init generate task pipeline
         generate_task_pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,

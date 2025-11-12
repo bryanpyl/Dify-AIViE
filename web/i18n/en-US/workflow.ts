@@ -80,7 +80,7 @@ const translation = {
     model: 'Model',
     workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
-    configure: 'Configure',
+    configure: 'Configure Workflow as Tool',
     manageInTools: 'Manage in Tools',
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
     viewDetailInTracingPanel: 'View details',
@@ -270,6 +270,7 @@ const translation = {
     'loop-end': 'Exit Loop',
     'knowledge-index': 'Knowledge Base',
     'datasource': 'Data Source',
+    'button-response':'Button Response',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -294,6 +295,7 @@ const translation = {
     'agent': 'Invoking large language models to answer questions or process natural language',
     'knowledge-index': 'Knowledge Base About',
     'datasource': 'Data Source About',
+    'button-response':'Return the list of buttons as a response to the users in the chat.'
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -959,6 +961,21 @@ const translation = {
       embeddingModelIsRequired: 'Embedding model is required',
       retrievalSettingIsRequired: 'Retrieval setting is required',
       rerankingModelIsRequired: 'Reranking model is required',
+    },
+    buttonResponse: {
+      responseTitle:{
+        title:'Response Title',
+        subtitle:'Provide a title for your response',
+        placeholder:'e.g.: Please select one of the button below to proceed'
+      },
+      buttonResponse:{
+        title:'Button Response List',
+        subtitle:'Define the list of buttons selections',
+        placeholder:'e.g. Learn More'
+      },
+      title:'Button Response',
+      fieldTitle:'Button Response ',
+      addButton:'Add Buttons',
     },
   },
   tracing: {

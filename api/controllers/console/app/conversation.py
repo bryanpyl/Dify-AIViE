@@ -58,8 +58,8 @@ class CompletionConversationApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -138,8 +138,8 @@ class CompletionConversationDetailApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -155,8 +155,8 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
@@ -207,8 +207,8 @@ class ChatConversationApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -342,8 +342,8 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -359,8 +359,8 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:

@@ -19,6 +19,10 @@ const translation = {
       rename: 'Rename',
       name: 'Name',
     },
+    chunkingMode:{
+      parentChild: "Parent Child",
+      general: "General"
+    },
     action: {
       uploadFile: 'Upload new file',
       settings: 'Chunking Settings',

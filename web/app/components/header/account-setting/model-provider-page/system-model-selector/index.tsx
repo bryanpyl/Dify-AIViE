@@ -23,7 +23,7 @@ import Button from '@/app/components/base/button'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type SystemModelSelectorProps = {
   textGenerationDefaultModel: DefaultModelResponse | undefined
@@ -43,7 +43,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { permissions } = usePermissionCheck()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -153,11 +153,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
-            <div>
+            <div className={!permissions.settingsModel.edit ? 'cursor-not-allowed pointer-events-none' : ''}>
               <ModelSelector
                 defaultModel={currentTextGenerationDefaultModel}
                 modelList={textGenerationModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
+                readonly={!permissions.settingsModel.edit }
               />
             </div>
           </div>
@@ -173,11 +174,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
-            <div>
+            <div className={!permissions.settingsModel.edit ? 'cursor-not-allowed pointer-events-none' : ''}>
               <ModelSelector
                 defaultModel={currentEmbeddingsDefaultModel}
                 modelList={embeddingModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
+                 readonly={!permissions.settingsModel.edit }
               />
             </div>
           </div>
@@ -193,11 +195,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
-            <div>
+            <div className={!permissions.settingsModel.edit ? 'cursor-not-allowed pointer-events-none' : ''}>
               <ModelSelector
                 defaultModel={currentRerankDefaultModel}
                 modelList={rerankModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                readonly={!permissions.settingsModel.edit }
               />
             </div>
           </div>
@@ -213,11 +216,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
-            <div>
+            <div className={!permissions.settingsModel.edit ? 'cursor-not-allowed pointer-events-none' : ''}>
               <ModelSelector
                 defaultModel={currentSpeech2textDefaultModel}
                 modelList={speech2textModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
+                readonly={!permissions.settingsModel.edit }
               />
             </div>
           </div>
@@ -233,11 +237,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
-            <div>
+            <div className={!permissions.settingsModel.edit ? 'cursor-not-allowed pointer-events-none' : ''}>
               <ModelSelector
                 defaultModel={currentTTSDefaultModel}
                 modelList={ttsModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                readonly={!permissions.settingsModel.edit }
               />
             </div>
           </div>
@@ -247,14 +252,16 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             >
               {t('common.operation.cancel')}
             </Button>
-            <Button
-              className='ml-2'
-              variant='primary'
-              onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
-            >
-              {t('common.operation.save')}
-            </Button>
+            {permissions.settingsModel.edit && (
+              <Button
+                className='ml-2'
+                variant='primary'
+                onClick={handleSave}
+                disabled={!permissions.settingsModel.edit}
+              >
+                {t('common.operation.save')}
+              </Button>
+            )}
           </div>
         </div>
       </PortalToFollowElemContent>

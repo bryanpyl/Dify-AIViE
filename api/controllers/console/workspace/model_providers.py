@@ -73,7 +73,8 @@ class ModelProviderCredentialApi(Resource):
     def post(self, provider: str):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -103,7 +104,8 @@ class ModelProviderCredentialApi(Resource):
     def put(self, provider: str):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -135,7 +137,8 @@ class ModelProviderCredentialApi(Resource):
     def delete(self, provider: str):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
@@ -158,7 +161,8 @@ class ModelProviderCredentialSwitchApi(Resource):
     def post(self, provider: str):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
@@ -236,7 +240,8 @@ class PreferredProviderTypeUpdateApi(Resource):
     def post(self, provider: str):
         if not isinstance(current_user, Account):
             raise ValueError("Invalid user account")
-        if not current_user.is_admin_or_owner:
+        # if not current_user.is_admin_or_owner:
+        if not current_user.is_superadmin:
             raise Forbidden()
 
         if not current_user.current_tenant_id:
@@ -262,25 +267,25 @@ class PreferredProviderTypeUpdateApi(Resource):
         return {"result": "success"}
 
 
-class ModelProviderPaymentCheckoutUrlApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, provider: str):
-        if provider != "anthropic":
-            raise ValueError(f"provider name {provider} is invalid")
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        BillingService.is_tenant_owner_or_admin(current_user)
-        if not current_user.current_tenant_id:
-            raise ValueError("No current tenant")
-        data = BillingService.get_model_provider_payment_link(
-            provider_name=provider,
-            tenant_id=current_user.current_tenant_id,
-            account_id=current_user.id,
-            prefilled_email=current_user.email,
-        )
-        return data
+# class ModelProviderPaymentCheckoutUrlApi(Resource):
+#     @setup_required
+#     @login_required
+#     @account_initialization_required
+#     def get(self, provider: str):
+#         if provider != "anthropic":
+#             raise ValueError(f"provider name {provider} is invalid")
+#         if not isinstance(current_user, Account):
+#             raise ValueError("Invalid user account")
+#         BillingService.is_tenant_owner_or_admin(current_user)
+#         if not current_user.current_tenant_id:
+#             raise ValueError("No current tenant")
+#         data = BillingService.get_model_provider_payment_link(
+#             provider_name=provider,
+#             tenant_id=current_user.current_tenant_id,
+#             account_id=current_user.id,
+#             prefilled_email=current_user.email,
+#         )
+#         return data
 
 
 api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
@@ -294,7 +299,9 @@ api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/
 api.add_resource(
     PreferredProviderTypeUpdateApi, "/workspaces/current/model-providers/<path:provider>/preferred-provider-type"
 )
-api.add_resource(ModelProviderPaymentCheckoutUrlApi, "/workspaces/current/model-providers/<path:provider>/checkout-url")
+# api.add_resource(
+#     ModelProviderPaymentCheckoutUrlApi, "/workspaces/current/model-providers/<path:provider>/checkout-url"
+# )
 api.add_resource(
     ModelProviderIconApi,
     "/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>",

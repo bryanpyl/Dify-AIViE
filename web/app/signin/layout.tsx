@@ -1,3 +1,18 @@
+// 'use client'
+
+// import { useEffect } from 'react'
+// import { useRouter } from 'next/navigation'
+
+// export default function SignInLayout() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     router.replace('/login');
+//   }, [router]);
+
+//   return null;
+// }
+
 'use client'
 import Header from './_header'
 

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
-import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
+import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine, RiRefreshLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { Theme } from '../theme/theme-context'
 import { CssTransform } from '../theme/utils'
@@ -14,24 +14,47 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { WindowMinimizeSolid } from '@/app/components/base/icons/src/vender/line/general'
+import AppIcon from '@/app/components/base/app-icon'
 
 export type IHeaderProps = {
+  avatarName?:string,
   isMobile?: boolean
+  appIcon?:string|null,
+  appIconBgColor?:string|null,
   allowResetChat?: boolean
-  customerIcon?: React.ReactNode
+  // customerIcon?: React.ReactNode
   title: string
   theme?: Theme
   onCreateNewChat?: () => void
+  activeStatus?:boolean
 }
 const Header: FC<IHeaderProps> = ({
+  avatarName,
   isMobile,
+  appIcon,
+  appIconBgColor,
   allowResetChat,
-  customerIcon,
+  // customerIcon,
   title,
   theme,
   onCreateNewChat,
+  activeStatus
 }) => {
   const { t } = useTranslation()
+
+  if (!isMobile)
+    return null
+
+  const handleMinimizeIframe = ()=>{
+    window.parent.postMessage("CLOSE_IFRAME",'*')
+  }
+
+  const handleCloseIframe = ()=>{
+    handleMinimizeIframe()
+    onCreateNewChat && onCreateNewChat()
+  }
+
   const {
     appData,
     currentConversationId,
@@ -135,45 +158,53 @@ const Header: FC<IHeaderProps> = ({
   return (
     <div
       className={cn('flex h-14 shrink-0 items-center justify-between rounded-t-2xl px-3')}
-      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? ''))}
+      style={Object.assign(
+        {},
+        CssTransform(theme?.backgroundHeaderColorStyle ?? ""),
+        CssTransform(theme?.headerBorderBottomStyle ?? "")
+      )}
     >
       <div className="flex grow items-center space-x-3">
-        {customerIcon}
-        <div
-          className='system-md-semibold truncate'
-          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
-        >
-          {title}
+        <AppIcon
+          rounded={true}
+          imageUrl={appIcon}
+          iconType="image"
+          background={appIconBgColor}
+        ></AppIcon>
+        <div className="flex flex-col justify-center gap-y-1">
+          <div
+            className={"text-sm font-bold text-white"}
+            style={CssTransform(theme?.colorFontOnHeaderStyle ?? "")}
+          >
+            {title}
+          </div>
+          {activeStatus?
+          (<div className='flex flex-shrink-0 gap-x-2 items-center'>
+            <div className='rounded-lg bg-green-500 w-2 h-2'></div>
+            <p className='system-2xs-semibold-uppercase text-white'>
+              Online
+            </p>
+          </div>):(
+            <Tooltip popupContent={`${avatarName} ${t('share.chat.offline')}`}>
+            <div className="flex flex-shrink-0 gap-x-2 items-center">
+              <div className="rounded-lg border-2 border-[#ffa9a3] w-2 h-2"></div>
+              <p className="system-2xs-semibold-uppercase text-white">
+                Offline
+              </p>
+            </div>
+          </Tooltip>
+          )
+          
+        }
         </div>
       </div>
-      <div className='flex items-center gap-1'>
-        {
-          showToggleExpandButton && (
-            <Tooltip
-              popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
-            >
-              <ActionButton size='l' onClick={handleToggleExpand}>
-                {
-                  expanded
-                    ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                    : <RiExpandDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                }
-              </ActionButton>
-            </Tooltip>
-          )
-        }
-        {currentConversationId && allowResetChat && (
-          <Tooltip
-            popupContent={t('share.chat.resetChat')}
-          >
-            <ActionButton size='l' onClick={onCreateNewChat}>
-              <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-            </ActionButton>
-          </Tooltip>
-        )}
-        {currentConversationId && inputsForms.length > 0 && (
-          <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
-        )}
+       <div className="flex gap-x-4">
+        <div className='flex items-end mb-1 hover:cursor-pointer hover:scale-105' onClick={handleMinimizeIframe}>
+          <WindowMinimizeSolid className="h-3 w-3 text-sm font-bold text-white"></WindowMinimizeSolid>
+        </div>
+        <div className='hover:cursor-pointer hover:scale-105' onClick={handleCloseIframe}>
+          <RiCloseLine className="h-5 w-5 text-sm font-bold text-white"></RiCloseLine>
+        </div>
       </div>
     </div>
   )

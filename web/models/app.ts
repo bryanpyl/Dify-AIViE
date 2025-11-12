@@ -1,5 +1,5 @@
 import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppMode, AppTemplate, SiteConfig } from '@/types/app'
+import type { App, AppSSO, AppMode, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {
@@ -91,6 +91,8 @@ export type DSLImportResponse = {
   error: string
   leaked_dependencies: Dependency[]
 }
+
+export type AppSSOResponse = { enabled: AppSSO['enable_sso'] }
 
 export type AppTemplatesResponse = {
   data: AppTemplate[]

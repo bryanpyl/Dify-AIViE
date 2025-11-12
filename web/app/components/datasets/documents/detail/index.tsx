@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
@@ -15,7 +16,7 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import Toast, { ToastContext } from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
 import type { FileItem } from '@/models/datasets'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -26,6 +27,7 @@ import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '
 import { useInvalid } from '@/service/use-base'
 import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type DocumentDetailProps = {
   datasetId: string
@@ -39,6 +41,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
+  const { notify } = useContext(ToastContext)
+  const { permissions } = usePermissionCheck()
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
   const [showMetadata, setShowMetadata] = useState(!isMobile)
@@ -160,7 +164,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             chunkingMode={documentDetail?.doc_form as ChunkingMode}
           />
           <div className='flex flex-wrap items-center'>
-            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
+            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && permissions.knowledgeDocumentManagement.add && (
               <>
                 <SegmentAdd
                   importStatus={importStatus}
@@ -216,8 +220,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={cn('flex h-full min-w-0 grow flex-col',
-              !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
-              !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
+              !embedding && isFullDocMode && 'relative pl-11 ppt-4',
+              !embedding && !isFullDocMode && 'relative pl-5 pt-3',
             )}>
               {embedding
                 ? <Embedding

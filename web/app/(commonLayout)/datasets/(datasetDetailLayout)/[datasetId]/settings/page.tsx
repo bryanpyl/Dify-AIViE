@@ -1,5 +1,5 @@
 import React from 'react'
-import { getLocaleOnServer, useTranslation as translate } from '@/i18n-config/server'
+import { getLocaleOnServer, useTranslation as translate } from '@/i18n/i18n-config/server'
 import Form from '@/app/components/datasets/settings/form'
 
 const Settings = async () => {

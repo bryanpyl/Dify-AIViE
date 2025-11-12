@@ -30,6 +30,7 @@ const Item: FC<ItemProps> = ({
   onSave,
   onRemove,
   editable = true,
+  readonly = false
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -66,7 +67,7 @@ const Item: FC<ItemProps> = ({
         />
         <div className='system-sm-medium w-0 grow truncate text-text-secondary' title={config.name}>{config.name}</div>
       </div>
-      <div className='ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex'>
+      {!readonly && <div className='ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex'>
         {
           editable && <ActionButton
             onClick={(e) => {
@@ -85,7 +86,7 @@ const Item: FC<ItemProps> = ({
         >
           <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
         </ActionButton>
-      </div>
+      </div>}
       {
         config.indexing_technique && <Badge
           className='shrink-0 group-hover:hidden'
@@ -95,7 +96,7 @@ const Item: FC<ItemProps> = ({
       {
         config.provider === 'external' && <Badge
           className='shrink-0 group-hover:hidden'
-          text={t('dataset.externalTag') as string}
+          text={t('dataset.externalTag')||"" as string}
         />
       }
       <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>

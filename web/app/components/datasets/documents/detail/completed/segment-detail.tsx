@@ -20,6 +20,7 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { IndexingType } from '../../../create/step-two'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
@@ -40,6 +41,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   docForm,
 }) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
@@ -48,8 +50,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const [showRegenerationModal, setShowRegenerationModal] = useState(false)
   const fullScreen = useSegmentListContext(s => s.fullScreen)
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
+  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+
+  const canEdit = permissions.knowledgeDocumentManagement.edit && isEditMode
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -78,15 +83,23 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     onUpdate(segInfo?.id || '', question, answer, keywords, true)
   }, [onUpdate, segInfo?.id, question, answer, keywords])
 
+  const isParentChildMode = useMemo(() => {
+    return mode === 'hierarchical'
+  }, [mode])
+
+  const isQAModel = useMemo(() => {
+    return docForm === ChunkingMode.qa
+  }, [docForm])
+
   const wordCountText = useMemo(() => {
     const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
-    const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
-    const count = isEditMode ? contentLength : segInfo!.word_count as number
+    const count = canEdit ? contentLength : segInfo?.word_count ?? 0
+    const total = formatNumber(count)
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
-  }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
+  }, [canEdit, question.length, answer.length, docForm, segInfo, t])
 
   const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
-  const titleText = isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
+  const titleText = canEdit ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
   const labelPrefix = docForm === ChunkingMode.parentChild ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
@@ -102,7 +115,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           </div>
         </div>
         <div className='flex items-center'>
-          {isEditMode && fullScreen && (
+          {canEdit && fullScreen && (
             <>
               <ActionButtons
                 handleCancel={handleCancel}
@@ -124,7 +137,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       <div className={cn(
         'flex grow',
         fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
-        !isEditMode && 'overflow-hidden pb-0',
+        !canEdit && 'overflow-hidden pb-0',
       )}>
         <div className={cn(isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
@@ -133,7 +146,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             answer={answer}
             onQuestionChange={question => setQuestion(question)}
             onAnswerChange={answer => setAnswer(answer)}
-            isEditMode={isEditMode}
+            isEditMode={canEdit}
           />
         </div>
         {isECOIndexing && <Keywords
@@ -141,11 +154,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           actionType={isEditMode ? 'edit' : 'view'}
           segInfo={segInfo}
           keywords={keywords}
-          isEditMode={isEditMode}
+          isEditMode={canEdit}
           onKeywordsChange={keywords => setKeywords(keywords)}
         />}
       </div>
-      {isEditMode && !fullScreen && (
+      {canEdit && !fullScreen && (
         <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>
           <ActionButtons
             handleCancel={handleCancel}
@@ -155,7 +168,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           />
         </div>
       )}
-      {
+      { 
         showRegenerationModal && (
           <RegenerationModal
             isShow={showRegenerationModal}

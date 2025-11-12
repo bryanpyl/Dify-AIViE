@@ -14,6 +14,8 @@ from services.tag_service import TagService
 def _validate_name(name):
     if not name or len(name) < 1 or len(name) > 50:
         raise ValueError("Name must be between 1 to 50 characters.")
+    if TagService.is_name_exist(name):
+        raise ValueError(f"Name is already taken.")
     return name
 
 
@@ -34,12 +36,12 @@ class TagListApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
-            raise Forbidden()
+        # if not (current_user.is_editor or current_user.is_dataset_editor):
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name
+            "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name, location="json"
         )
         parser.add_argument(
             "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
@@ -59,8 +61,8 @@ class TagUpdateDeleteApi(Resource):
     def patch(self, tag_id):
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
-            raise Forbidden()
+        # if not (current_user.is_editor or current_user.is_dataset_editor):
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -81,8 +83,8 @@ class TagUpdateDeleteApi(Resource):
     def delete(self, tag_id):
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        # if not current_user.is_editor:
+        #     raise Forbidden()
 
         TagService.delete_tag(tag_id)
 
@@ -95,8 +97,8 @@ class TagBindingCreateApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
-            raise Forbidden()
+        # if not (current_user.is_editor or current_user.is_dataset_editor):
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -107,6 +109,9 @@ class TagBindingCreateApi(Resource):
         )
         parser.add_argument(
             "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
+        )
+        parser.add_argument(
+            "subtype", type=str, location="json", choices=Tag.SUBTAG_TYPE_LIST, nullable=True, help="Invalid subtag type."
         )
         args = parser.parse_args()
         TagService.save_tag_binding(args)
@@ -120,8 +125,8 @@ class TagBindingDeleteApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
-            raise Forbidden()
+        # if not (current_user.is_editor or current_user.is_dataset_editor):
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
@@ -129,13 +134,32 @@ class TagBindingDeleteApi(Resource):
         parser.add_argument(
             "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
         )
+        parser.add_argument(
+            "subtype", type=str, location="json", choices=Tag.SUBTAG_TYPE_LIST, nullable=True, help="Invalid subtag type."
+        )
         args = parser.parse_args()
         TagService.delete_tag_binding(args)
 
         return {"result": "success"}, 200
+
+class TagSearchBasedOnTagNameApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('tag_name', type=str, nullable=False, required=True,location='args')
+        parser.add_argument('tag_subtype',type=str, nullable=False, required=True, location='args')
+        args = parser.parse_args()
+        target_id=TagService.get_target_ids_by_tag_name(**args)
+        
+        return {
+            'target_id':target_id
+        }
 
 
 api.add_resource(TagListApi, "/tags")
 api.add_resource(TagUpdateDeleteApi, "/tags/<uuid:tag_id>")
 api.add_resource(TagBindingCreateApi, "/tag-bindings/create")
 api.add_resource(TagBindingDeleteApi, "/tag-bindings/remove")
+api.add_resource(TagSearchBasedOnTagNameApi, '/search-tag-name')

@@ -16,6 +16,8 @@ type INavProps = {
   activeSegment: string | string[]
   link: string
   isApp: boolean
+  canView?: boolean
+  hideNavSelection?: boolean
 } & INavSelectorProps
 
 const Nav = ({
@@ -30,6 +32,8 @@ const Nav = ({
   onCreate,
   onLoadMore,
   isApp,
+  hideNavSelection=false,
+  canView = false
 }: INavProps) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [hovered, setHovered] = useState(false)
@@ -63,7 +67,7 @@ const Nav = ({
         >
           <div>
             {
-              (hovered && curNav)
+              (hovered && curNav && canView)
                 ? <ArrowNarrowLeft className='h-4 w-4' />
                 : isActivated
                   ? activeIcon
@@ -76,7 +80,7 @@ const Nav = ({
         </div>
       </Link>
       {
-        curNav && isActivated && (
+        curNav && isActivated && !hideNavSelection && (
           <>
             <div className='font-light text-divider-deep'>/</div>
             <NavSelector

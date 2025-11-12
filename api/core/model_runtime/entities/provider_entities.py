@@ -7,7 +7,7 @@ from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
-class ConfigurateMethod(Enum):
+class ConfigurateMethod(StrEnum):
     """
     Enum class for configurate method of provider model.
     """

@@ -197,6 +197,7 @@ app_detail_fields_with_site = {
     "access_mode": fields.String,
     "tags": fields.List(fields.Nested(tag_fields)),
     "site": fields.Nested(site_fields),
+    "accessible": fields.Boolean,
 }
 
 

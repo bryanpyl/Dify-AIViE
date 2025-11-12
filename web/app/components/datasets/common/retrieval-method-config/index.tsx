@@ -16,6 +16,7 @@ import {
 import OptionCard from '../../settings/option-card'
 import { FullTextSearch, HybridSearch, VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
 import { EffectColor } from '../../settings/chunk-structure/types'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   disabled?: boolean
@@ -29,6 +30,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
+  const { permissions } = usePermissionCheck()
   const { supportRetrievalMethods } = useProviderContext()
   const {
     defaultModel: rerankDefaultModel,
@@ -94,7 +96,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
-          disabled={disabled}
+          disabled={!permissions.knowledgeAdvancedSettings.edit}
           icon={<VectorSearch className='size-4' />}
           iconActiveColor='text-util-colors-purple-purple-600'
           title={t('dataset.retrieval.semantic_search.title')}
@@ -116,7 +118,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.fullText) && (
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
-          disabled={disabled}
+          disabled={!permissions.knowledgeAdvancedSettings.edit}
           icon={<FullTextSearch className='size-4' />}
           iconActiveColor='text-util-colors-purple-purple-600'
           title={t('dataset.retrieval.full_text_search.title')}
@@ -138,7 +140,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.hybrid) && (
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
-          disabled={disabled}
+          disabled={!permissions.knowledgeAdvancedSettings.edit}
           icon={<HybridSearch className='size-4' />}
           iconActiveColor='text-util-colors-purple-purple-600'
           title={t('dataset.retrieval.hybrid_search.title')}

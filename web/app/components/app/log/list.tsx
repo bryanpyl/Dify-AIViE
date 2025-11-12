@@ -41,6 +41,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { usePermissionCheck } from '@/context/permission-context'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -199,6 +200,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const SCROLL_DEBOUNCE_MS = 200
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
+  const { permissions } = usePermissionCheck()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
@@ -709,7 +711,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   annotation_reply: {
                     enabled: true,
                   },
-                  supportFeedback: true,
+                  supportFeedback: permissions.applicationLogsAnnotation.edit,
                 } as any}
                 chatList={threadChatItems}
                 onAnnotationAdded={handleAnnotationAdded}

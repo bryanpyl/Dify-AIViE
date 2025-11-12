@@ -425,3 +425,5 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
     zh_Hans: '输入序列并按 Tab 键',
   },
 }
+
+export const DEFAULT_CHATBOT_ACTIVE_TIMEOUT_MS = 15*60*1000; //15 minutes 

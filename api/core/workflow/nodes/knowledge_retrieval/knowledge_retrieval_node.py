@@ -249,6 +249,7 @@ class KnowledgeRetrievalNode(Node):
             [dataset.id for dataset in available_datasets], query, node_data
         )
         all_documents = []
+        dataset_query_id = None
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # fetch model config
@@ -269,7 +270,7 @@ class KnowledgeRetrievalNode(Node):
                 if features:
                     if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
                         planning_strategy = PlanningStrategy.ROUTER
-                all_documents = dataset_retrieval.single_retrieve(
+                all_documents, dataset_query_id = dataset_retrieval.single_retrieve(
                     available_datasets=available_datasets,
                     tenant_id=self.tenant_id,
                     user_id=self.user_id,
@@ -312,7 +313,7 @@ class KnowledgeRetrievalNode(Node):
             else:
                 reranking_model = None
                 weights = None
-            all_documents = dataset_retrieval.multiple_retrieve(
+            all_documents, dataset_query_id = dataset_retrieval.multiple_retrieve(
                 app_id=self.app_id,
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,

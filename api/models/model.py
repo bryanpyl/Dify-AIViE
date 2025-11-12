@@ -1,3 +1,4 @@
+import enum
 import json
 import re
 import uuid
@@ -284,7 +285,7 @@ class App(Base):
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
-                Tag.type == "app",
+                Tag.type == "group",
             )
             .all()
         )
@@ -1883,7 +1884,8 @@ class Tag(Base):
         sa.Index("tag_name_idx", "name"),
     )
 
-    TAG_TYPE_LIST = ["knowledge", "app"]
+    TAG_TYPE_LIST = ["group"]
+    SUBTAG_TYPE_LIST = ["app", "knowledge", "user"]
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=True)
@@ -1904,6 +1906,7 @@ class TagBinding(Base):
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=True)
     tag_id = mapped_column(StringUUID, nullable=True)
+    subtype = mapped_column(String(16), nullable=True)
     target_id = mapped_column(StringUUID, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1944,3 +1947,146 @@ class TraceAppConfig(Base):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+class Group(Base):  # type: ignore[name-defined]
+    __tablename__ = "groups"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="group_pkey"),
+        sa.Index("group_name_idx", "name"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=True)
+    name = mapped_column(db.String(255), nullable=False)
+    agency_name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    created_by = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class GroupBinding(Base):  # type: ignore[name-defined]
+    __tablename__ = "group_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="group_binding_pkey"),
+        sa.Index("group_bind_group_id_idx", "group_id"),
+        sa.Index("group_bind_target_id_idx", "target_id"),
+        sa.Index("group_bind_type_idx", "type"),
+    )
+
+    GROUP_TYPE_LIST = ["knowledge", "app", "user", "role"]
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=True)
+    group_id = mapped_column(StringUUID, nullable=True)
+    target_id = mapped_column(StringUUID, nullable=True)
+    type = mapped_column(db.String(16), nullable=True)
+    created_by = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DefaultRoles(enum.StrEnum):
+    SUPERADMINISTRATOR = "Superadministrator"
+    SYSTEM_OPERATOR = "System Operator"
+    ADMINISTRATOR = "Administrator"
+    CHAT_USER = "Chat User"
+
+    @staticmethod
+    def is_superadmin_role(role: str) -> bool:
+        return role == DefaultRoles.SUPERADMINISTRATOR or role == DefaultRoles.SYSTEM_OPERATOR
+
+class Role(Base):  # type: ignore[name-defined]
+    __tablename__ = "roles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="role_pkey"),
+        sa.Index("role_name_idx", "name"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=True)
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    created_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class MemberPermissions(enum.StrEnum):
+    ADD_GROUP_MEMBER = "add-group-member"
+    EDIT_GROUP_MEMBER = "edit-group-member"
+    DELETE_GROUP_MEMBER = "delete-group-member"
+
+
+class Permission(Base):  # type: ignore[name-defined]
+    __tablename__ = "permissions"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="permission_pkey"),
+        sa.Index("permission_code_idx", "code"),
+        sa.Index("permission_name_idx", "name"),
+        sa.Index("permission_sub_module_id_idx", "sub_module_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    code = mapped_column(db.String(255), nullable=False)
+    name = mapped_column(db.String(255), nullable=False)
+    sub_module_id = mapped_column(StringUUID, nullable=True)
+    is_superadmin_only = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class RolePermissionJoin(Base):  # type: ignore[name-defined]
+    __tablename__ = "role_permission_joins"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="role_permission_join_pkey"),
+        sa.Index("role_permission_join_tenant_id_idx", "tenant_id"),
+        sa.Index("role_permission_join_role_id_idx", "role_id"),
+        sa.Index("role_permission_join_permission_id_idx", "permission_id"),
+        sa.UniqueConstraint("role_id", "permission_id", name="unique_role_permission"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    role_id = mapped_column(StringUUID, nullable=False)
+    permission_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class RoleAccountJoin(Base):  # type: ignore[name-defined]
+    __tablename__ = "role_account_joins"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="role_account_join_pkey"),
+        sa.Index("role_account_join_tenant_id_idx", "tenant_id"),
+        sa.Index("role_account_join_account_id_idx", "account_id"),
+        sa.Index("role_account_join_role_id_idx", "role_id"),
+        sa.UniqueConstraint("account_id", "role_id", name="unique_account_role"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    account_id = mapped_column(StringUUID, nullable=False)
+    role_id = mapped_column(StringUUID, nullable=False)
+    created_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+class SubModule(Base):  # type: ignore[name-defined]
+    __tablename__ = "sub_modules"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="sub_module_pkey"),
+        sa.Index("sub_module_name_idx", "name"),
+        sa.Index("module_id_idx", "module_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    module_id = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+class Module(Base):  # type: ignore[name-defined]
+    __tablename__ = "modules"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="module_pkey"),
+        sa.Index("module_name_idx", "name"),
+    )
+
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    name = mapped_column(db.String(255), nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())

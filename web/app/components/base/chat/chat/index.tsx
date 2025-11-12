@@ -34,8 +34,13 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
+import { useEmbeddedChatbotContext } from '../embedded-chatbot/context'
+import { Refresh } from '../../icons/src/vender/line/general'
+import { OperationAction } from './answer/operation'
+
 
 export type ChatProps = {
+  operationAction?: OperationAction[] | null
   appData?: AppData
   chatList: ChatItem[]
   config?: ChatConfig
@@ -50,6 +55,7 @@ export type ChatProps = {
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
+  chatFooterBgClassName?:string
   chatFooterInnerClassName?: string
   suggestedQuestions?: string[]
   showPromptLog?: boolean
@@ -73,9 +79,11 @@ export type ChatProps = {
   inputDisabled?: boolean
   isMobile?: boolean
   sidebarCollapseState?: boolean
+  prepopulatedQuery?: string
 }
 
 const Chat: FC<ChatProps> = ({
+  operationAction,
   appData,
   config,
   onSend,
@@ -88,6 +96,7 @@ const Chat: FC<ChatProps> = ({
   onStopResponding,
   noChatInput,
   chatContainerClassName,
+  chatFooterBgClassName,
   chatContainerInnerClassName,
   chatFooterClassName,
   chatFooterInnerClassName,
@@ -112,8 +121,10 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   isMobile,
   sidebarCollapseState,
+  prepopulatedQuery,
 }) => {
   const { t } = useTranslation()
+  const { isInactive, avatarName, handleNewConversation } = useEmbeddedChatbotContext()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -157,7 +168,7 @@ const Chat: FC<ChatProps> = ({
         handleWindowResize()
       })
     }
-  })
+  }, [])
 
   useEffect(() => {
     const debouncedHandler = debounce(handleWindowResize, 200)
@@ -175,8 +186,10 @@ const Chat: FC<ChatProps> = ({
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
-          chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
-          handleScrollToBottom()
+          if (chatContainerRef.current) {
+            chatContainerRef.current.style.paddingBottom = `${blockSize}px`
+            handleScrollToBottom()
+          }
         }
       })
       resizeContainerObserver.observe(chatFooterRef.current)
@@ -219,6 +232,7 @@ const Chat: FC<ChatProps> = ({
 
   return (
     <ChatContextProvider
+      operationAction={operationAction}
       config={config}
       chatList={chatList}
       isResponding={isResponding}
@@ -281,6 +295,9 @@ const Chat: FC<ChatProps> = ({
         <div
           className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
+          style={{
+            background: chatFooterBgClassName ? chatFooterBgClassName : 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',
+          }}
         >
           <div
             ref={chatFooterInnerRef}
@@ -306,7 +323,7 @@ const Chat: FC<ChatProps> = ({
               )
             }
             {
-              !noChatInput && (
+              !isInactive && !noChatInput && (
                 <ChatInputArea
                   botName={appData?.site.title || 'Bot'}
                   disabled={inputDisabled}
@@ -321,7 +338,20 @@ const Chat: FC<ChatProps> = ({
                   inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
+                  prepopulatedQuery={prepopulatedQuery}
                 />
+              )
+            }
+            {
+              isInactive && (
+                <div className='grow flex justify-center'>
+                  <div className='flex flex-row px-2 py-2 max-w-[80%] mx-auto mb-3 mt-2.5 space-x-2 border border-gray-300 shadow-lg rounded-lg bg-white items-center hover:cursor-pointer hover:scale-105 transition-all ease-in-out'
+                  onClick={handleNewConversation}
+                  >
+                    <Refresh className="w-4 h-4 text-gray-500" />
+                    <p className='system-xs-medium text-gray-500 text-wrap text-center'>{avatarName}{' '}{t('share.chat.offline')}</p>
+                  </div>
+                </div>
               )
             }
           </div>

@@ -49,16 +49,6 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
   questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
-  system_parameters: {
-    audio_file_size_limit: number
-    file_size_limit: number
-    image_file_size_limit: number
-    video_file_size_limit: number
-    workflow_file_upload_limit: number
-  }
-  more_like_this: {
-    enabled: boolean
-  }
 }
 
 export type WorkflowProcess = {
@@ -74,6 +64,9 @@ export type ChatItem = IChatItem & {
   workflowProcess?: WorkflowProcess
   conversationId?: string
   allFiles?: FileEntity[]
+  nodeResponse?: string
+  hold_response_content?: string,
+  timestamp?: number
 }
 
 export type ChatItemInTree = {
@@ -85,7 +78,10 @@ export type OnSend = {
   (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
 }
 
-export type OnRegenerate = (chatItem: ChatItem) => void
+export type OnRegenerate = (
+  chatItem: ChatItem,
+  options?: { message: string; files?: any[] }
+) => void
 
 export type Callback = {
   onSuccess: () => void

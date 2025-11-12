@@ -46,7 +46,7 @@ import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/i18n-config/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -63,6 +63,9 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
+import { AddGroupBindings } from '@/service/account'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -148,6 +151,8 @@ const StepTwo = ({
   updateRetrievalMethodCache,
 }: StepTwoProps) => {
   const { t } = useTranslation()
+  const { permissions, isSystemRole } = usePermissionCheck()
+  const { groupId } = useAppContext()
   const docLink = useDocLink()
   const { locale } = useContext(I18n)
   const media = useBreakpoints()
@@ -564,7 +569,7 @@ const StepTwo = ({
       return false
 
     if (!datasetId) {
-      await createFirstDocumentMutation.mutateAsync(
+      const data = await createFirstDocumentMutation.mutateAsync(
         params,
         {
           onSuccess(data) {
@@ -574,6 +579,13 @@ const StepTwo = ({
           },
         },
       )
+      if (!isSystemRole && data.dataset?.id) {
+        await AddGroupBindings({
+          group_id: groupId,
+          target_id: [data.dataset.id],
+          type: "knowledge",
+        })
+      }
     }
     else {
       await createDocumentMutation.mutateAsync(params, {
@@ -865,164 +877,166 @@ const StepTwo = ({
               </div>
             </div>
           </OptionCard>}
-        <Divider className='my-5' />
-        <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
-        <div className='flex items-center gap-2'>
-          {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard
-              className='flex-1 self-stretch'
-              title={<div className='flex items-center'>
-                {t('datasetCreation.stepTwo.qualified')}
-                <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
-                  {t('datasetCreation.stepTwo.recommend')}
-                </Badge>
-                <span className='ml-auto'>
-                  {!hasSetIndexType && <span className={cn(s.radio)} />}
-                </span>
-              </div>}
-              description={t('datasetCreation.stepTwo.qualifiedTip')}
-              icon={<Image src={indexMethodIcon.high_quality} alt='' />}
-              isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
-              disabled={hasSetIndexType}
-              onSwitched={() => {
-                setIndexType(IndexingType.QUALIFIED)
-              }}
-            />
-          )}
-
-          {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
-            <>
-              <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
-                <header className='mb-4 pt-6'>
-                  <h2 className='text-lg font-semibold text-text-primary'>
-                    {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
-                  </h2>
-                  <p className='mt-2 text-sm font-normal text-text-secondary'>
-                    {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
-                  </p>
-                </header>
-                <div className='flex gap-2 pb-6'>
-                  <Button className='ml-auto' onClick={() => {
-                    setIsQAConfirmDialogOpen(false)
-                  }}>
-                    {t('datasetCreation.stepTwo.cancel')}
-                  </Button>
-                  <Button variant={'primary'} onClick={() => {
-                    setIsQAConfirmDialogOpen(false)
-                    setIndexType(IndexingType.QUALIFIED)
-                    setDocForm(ChunkingMode.qa)
-                  }}>
-                    {t('datasetCreation.stepTwo.switch')}
-                  </Button>
-                </div>
-              </CustomDialog>
-              <Tooltip
-                popupContent={
-                  <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
-                    {
-                      docForm === ChunkingMode.qa
-                        ? t('datasetCreation.stepTwo.notAvailableForQA')
-                        : t('datasetCreation.stepTwo.notAvailableForParentChild')
-                    }
-                  </div>
-                }
-                noDecoration
-                position='top'
-                asChild={false}
-                triggerClassName='flex-1 self-stretch'
-              >
+        {permissions.knowledgeAdvancedSettings.view && (
+          <>
+            <Divider className='my-5' />
+            <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
+            <div className='flex items-center gap-2'>
+              {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
                 <OptionCard
-                  className='h-full'
-                  title={t('datasetCreation.stepTwo.economical')}
-                  description={t('datasetCreation.stepTwo.economicalTip')}
-                  icon={<Image src={indexMethodIcon.economical} alt='' />}
-                  isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                  disabled={hasSetIndexType || docForm !== ChunkingMode.text}
+                  className='flex-1 self-stretch'
+                  title={<div className='flex items-center'>
+                    {t('datasetCreation.stepTwo.qualified')}
+                    <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
+                      {t('datasetCreation.stepTwo.recommend')}
+                    </Badge>
+                    <span className='ml-auto'>
+                      {!hasSetIndexType && <span className={cn(s.radio)} />}
+                    </span>
+                  </div>}
+                  description={t('datasetCreation.stepTwo.qualifiedTip')}
+                  icon={<Image src={indexMethodIcon.high_quality} alt='' />}
+                  isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
+                  disabled={hasSetIndexType}
                   onSwitched={() => {
-                    setIndexType(IndexingType.ECONOMICAL)
+                    setIndexType(IndexingType.QUALIFIED)
                   }}
                 />
-              </Tooltip>
-            </>)}
-        </div>
-        {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-          <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-            <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40'></div>
-            <div className='p-1'>
-              <AlertTriangle className='size-4 text-text-warning-secondary' />
+              )}
+              {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
+                <>
+                  <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
+                    <header className='mb-4 pt-6'>
+                      <h2 className='text-lg font-semibold text-text-primary'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
+                      </h2>
+                      <p className='mt-2 text-sm font-normal text-text-secondary'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
+                      </p>
+                    </header>
+                    <div className='flex gap-2 pb-6'>
+                      <Button className='ml-auto' onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                      }}>
+                        {t('datasetCreation.stepTwo.cancel')}
+                      </Button>
+                      <Button variant={'primary'} onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                        setIndexType(IndexingType.QUALIFIED)
+                        setDocForm(ChunkingMode.qa)
+                      }}>
+                        {t('datasetCreation.stepTwo.switch')}
+                      </Button>
+                    </div>
+                  </CustomDialog>
+                  <Tooltip
+                    popupContent={
+                      <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
+                        {
+                          docForm === ChunkingMode.qa
+                            ? t('datasetCreation.stepTwo.notAvailableForQA')
+                            : t('datasetCreation.stepTwo.notAvailableForParentChild')
+                        }
+                      </div>
+                    }
+                    noDecoration
+                    position='top'
+                    asChild={false}
+                    triggerClassName='flex-1 self-stretch'
+                  >
+                    <OptionCard
+                      className='h-full'
+                      title={t('datasetCreation.stepTwo.economical')}
+                      description={t('datasetCreation.stepTwo.economicalTip')}
+                      icon={<Image src={indexMethodIcon.economical} alt='' />}
+                      isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+                      disabled={hasSetIndexType || docForm !== ChunkingMode.text}
+                      onSwitched={() => {
+                        setIndexType(IndexingType.ECONOMICAL)
+                      }}
+                    />
+                  </Tooltip>
+                </>)}
             </div>
-            <span className='system-xs-medium text-text-primary'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
-          </div>
-        )}
-        {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='system-xs-medium mt-2 text-text-tertiary'>
-            {t('datasetCreation.stepTwo.indexSettingTip')}
-            <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
-          </div>
-        )}
-        {/* Embedding model */}
-        {indexType === IndexingType.QUALIFIED && (
-          <div className='mt-5'>
-            <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
-            <ModelSelector
-              readonly={isModelAndRetrievalConfigDisabled}
-              triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
-              defaultModel={embeddingModel}
-              modelList={embeddingModelList}
-              onSelect={(model: DefaultModel) => {
-                setEmbeddingModel(model)
-              }}
-            />
-            {isModelAndRetrievalConfigDisabled && (
+            {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
+              <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
+                <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40'></div>
+                <div className='p-1'>
+                  <AlertTriangle className='size-4 text-text-warning-secondary' />
+                </div>
+                <span className='system-xs-medium text-text-primary'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+              </div>
+            )}
+            {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
               <div className='system-xs-medium mt-2 text-text-tertiary'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-          </div>
-        )}
-        <Divider className='my-5' />
-        {/* Retrieval Method Config */}
-        <div>
-          {!isModelAndRetrievalConfigDisabled
-            ? (
-              <div className={'mb-1'}>
-                <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='body-xs-regular text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer'
-                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
-                    className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.longDescription')}
-                </div>
-              </div>
-            )
-            : (
-              <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
-                <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            {/* Embedding model */}
+            {indexType === IndexingType.QUALIFIED && (
+              <div className='mt-5'>
+                <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
+                <ModelSelector
+                  readonly={isModelAndRetrievalConfigDisabled}
+                  triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
+                  defaultModel={embeddingModel}
+                  modelList={embeddingModelList}
+                  onSelect={(model: DefaultModel) => {
+                    setEmbeddingModel(model)
+                  }}
+                />
+                {isModelAndRetrievalConfigDisabled && (
+                  <div className='system-xs-medium mt-2 text-text-tertiary'>
+                    {t('datasetCreation.stepTwo.indexSettingTip')}
+                    <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                  </div>
+                )}
               </div>
             )}
-
-          <div className=''>
-            {
-              getIndexing_technique() === IndexingType.QUALIFIED
+            <Divider className='my-5' />
+            {/* Retrieval Method Config */}
+            <div>
+              {!isModelAndRetrievalConfigDisabled
                 ? (
-                  <RetrievalMethodConfig
-                    disabled={isModelAndRetrievalConfigDisabled}
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
+                  <div className={'mb-1'}>
+                    <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                    <div className='body-xs-regular text-text-tertiary'>
+                      <a target='_blank' rel='noopener noreferrer'
+                        href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
+                        className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      {t('datasetSettings.form.retrievalSetting.longDescription')}
+                    </div>
+                  </div>
                 )
                 : (
-                  <EconomicalRetrievalMethodConfig
-                    disabled={isModelAndRetrievalConfigDisabled}
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )
-            }
-          </div>
-        </div>
+                  <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
+                    <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  </div>
+                )}
 
+              <div className=''>
+                {
+                  getIndexing_technique() === IndexingType.QUALIFIED
+                    ? (
+                      <RetrievalMethodConfig
+                        disabled={isModelAndRetrievalConfigDisabled}
+                        value={retrievalConfig}
+                        onChange={setRetrievalConfig}
+                      />
+                    )
+                    : (
+                      <EconomicalRetrievalMethodConfig
+                        disabled={isModelAndRetrievalConfigDisabled}
+                        value={retrievalConfig}
+                        onChange={setRetrievalConfig}
+                      />
+                    )
+                }
+              </div>
+            </div>
+          </>   
+        )}
         {!isSetting
           ? (
             <div className='mt-8 flex items-center py-2'>

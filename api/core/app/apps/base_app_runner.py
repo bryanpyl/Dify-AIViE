@@ -214,9 +214,9 @@ class AppRunner:
         :return:
         """
         if not stream and isinstance(invoke_result, LLMResult):
-            self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            return self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
         elif stream and isinstance(invoke_result, Generator):
-            self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            return self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
         else:
             raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
@@ -234,6 +234,8 @@ class AppRunner:
             ),
             PublishFrom.APPLICATION_MANAGER,
         )
+
+        return invoke_result.message.content
 
     def _handle_invoke_result_stream(
         self, invoke_result: Generator[LLMResultChunk, None, None], queue_manager: AppQueueManager, agent: bool
@@ -289,6 +291,8 @@ class AppRunner:
             ),
             PublishFrom.APPLICATION_MANAGER,
         )
+
+        return llm_result.message.content
 
     def moderation_for_inputs(
         self,

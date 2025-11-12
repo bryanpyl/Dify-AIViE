@@ -25,6 +25,7 @@ import { ConfigProvider } from '@/app/components/header/account-setting/model-pr
 
 type CredentialPanelProps = {
   provider: ModelProvider
+  onSetup: () => void
 }
 const CredentialPanel = ({
   provider,

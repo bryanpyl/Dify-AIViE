@@ -11,6 +11,7 @@ import Loading from '@/app/components/base/loading'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type Props = {
   pageType: PageType
@@ -21,6 +22,7 @@ const LogAnnotation: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const { permissions, handleNoViewPermission } = usePermissionCheck()
   const appDetail = useAppStore(state => state.appDetail)
 
   const options = useMemo(() => {
@@ -40,6 +42,8 @@ const LogAnnotation: FC<Props> = ({
     )
   }
 
+  if (!permissions.applicationLogsAnnotation.view) handleNoViewPermission()
+    
   return (
     <div className='flex h-full flex-col px-6 pt-3'>
       {appDetail.mode !== 'workflow' && (

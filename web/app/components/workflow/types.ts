@@ -50,6 +50,7 @@ export enum BlockEnum {
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
+  ButtonResponse='button-response'
 }
 
 export enum ControlMode {
@@ -316,6 +317,13 @@ export type NodeOutPutVar = {
   isStartNode?: boolean
   isLoop?: boolean
   isFlat?: boolean
+}
+
+export type Block = {
+  classification?: string
+  type: BlockEnum
+  title: string
+  description?: string
 }
 
 export type NodeDefault<T = {}> = {

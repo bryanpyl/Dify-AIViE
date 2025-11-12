@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n/i18n-config'
 import type { AppIconType } from '@/types/app'
 
 export type ResponseHolder = {}
@@ -8,6 +8,7 @@ export type ConversationItem = {
   name: string
   inputs: Record<string, any> | null
   introduction: string
+  created_at: number
 }
 
 export type SiteInfo = {

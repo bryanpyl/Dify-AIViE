@@ -1,0 +1,82 @@
+default:
+  tags:
+    - aivie-local
+
+stages:
+  - security-scan
+  - sonarqube-scan
+
+variables:
+  GIT_STRATEGY: clone
+  DOCKER_DRIVER: overlay2
+
+cache:
+  paths:
+    - /tmp/zap.tar.gz
+    
+semgrep_sast:
+  stage: security-scan
+  image: returntocorp/semgrep:latest
+  variables:
+    SEMGREP_SEND_METRICS: "off"
+    LANG: C.UTF-8
+    # Optionally keep skip var, but may be ignored
+    SEMGREP_SKIP_DOCKER_CHECK: "1"
+  before_script:
+    - apk add --no-cache jq icu-data-full 2>/dev/null || echo "jq/icu installation skipped"
+    - chmod +x semgrep_scan.sh
+  script:
+    - echo "=== Running Semgrep Security Scan ==="
+    - ./semgrep_scan.sh full
+  artifacts:
+    when: always
+    paths:
+      - gl-semgrep-sast-report.json
+      - semgrep-report.md
+      - semgrep-raw.json
+    reports:
+      sast: gl-semgrep-sast-report.json
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+
+zap_scan:
+  stage: security-scan
+  image: alpine:latest
+  before_script:
+    - chmod +x zap_scan.sh  
+  script:
+    - ./zap_scan.sh
+  artifacts:
+    when: always
+    paths:
+      - "*.html"  
+    expire_in: 7 days
+  allow_failure: true
+
+sonarqube_scan:
+  stage: sonarqube-scan
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    GIT_DEPTH: "0"
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - |
+      echo "Starting SonarQube analysis for branch: ${CI_COMMIT_REF_NAME}"
+      sonar-scanner \
+        -Dsonar.sources=. \
+        -Dsonar.sourceEncoding=UTF-8 \
+        -Dsonar.qualitygate.wait=false \
+        -Dsonar.projectKey=${CI_PROJECT_PATH_SLUG}-${CI_COMMIT_REF_SLUG} \
+        -Dsonar.projectName="${CI_PROJECT_NAME} - ${CI_COMMIT_REF_NAME}" \
+        -Dsonar.exclusions=**/i18n/**,**/node_modules/**,**/vendor/**,**/test/**,**/tests/**,**/dist/**,**/build/**,**/*.min.js,**/*.min.css
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH'

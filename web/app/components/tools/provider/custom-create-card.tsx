@@ -9,11 +9,11 @@ import {
 } from '@remixicon/react'
 import type { CustomCollectionBackend } from '../types'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getLanguage } from '@/i18n/i18n-config/language'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { createCustomCollection } from '@/service/tools'
 import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import { useDocLink } from '@/context/i18n'
 
 type Props = {
@@ -24,7 +24,7 @@ const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSystemRole } = usePermissionCheck()
 
   const docLink = useDocLink()
   const linkUrl = useMemo(() => {
@@ -46,7 +46,7 @@ const Contribute = ({ onRefreshData }: Props) => {
 
   return (
     <>
-      {isCurrentWorkspaceManager && (
+      {isSystemRole && (
         <div className='col-span-1 flex min-h-[135px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out'>
           <div className='group grow rounded-t-xl' onClick={() => setIsShowEditCustomCollectionModal(true)}>
             <div className='flex shrink-0 items-center p-4 pb-3'>

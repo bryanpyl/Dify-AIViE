@@ -19,7 +19,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
+from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser, Role, RoleAccountJoin
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
@@ -237,10 +237,12 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
-                .where(Tenant.id == api_token.tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.role.in_(["owner"]))
-                .where(Tenant.status == TenantStatus.NORMAL)
+                .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                .join(RoleAccountJoin, RoleAccountJoin.account_id == TenantAccountJoin.account_id)
+                .join(Role, Role.id == RoleAccountJoin.role_id)
+                .filter(Tenant.id == api_token.tenant_id)
+                .filter(Role.name.in_(["Superadministrator"]))
+                .filter(Tenant.status == TenantStatus.NORMAL)
                 .one_or_none()
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:

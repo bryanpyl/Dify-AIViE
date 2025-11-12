@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import { useAppContext } from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
@@ -30,6 +30,8 @@ import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
 import { useDocLink } from '@/context/i18n'
+import { usePermissionCheck } from '@/context/permission-context'
+import { AddGroupBindings } from '@/service/account'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -39,9 +41,12 @@ type CreateAppProps = {
 }
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
+  const { permissions, isSystemRole } = usePermissionCheck()
+  const { groupId } = useAppContext()
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
+  const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
   const [appMode, setAppMode] = useState<AppMode>(defaultAppMode || 'advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
@@ -52,8 +57,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
-
   const isCreatingRef = useRef(false)
 
   useEffect(() => {
@@ -82,11 +85,19 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
         mode: appMode,
       })
+      if (!isSystemRole) {
+        await AddGroupBindings({
+          group_id: groupId,
+          target_id: [app.id],
+          type: "app",
+        })
+      }
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       onSuccess()
       onClose()
+      mutateApps()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, app, push)
+      getRedirection(permissions, app, push)
     }
     catch (e: any) {
       notify({
@@ -95,7 +106,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, permissions])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {

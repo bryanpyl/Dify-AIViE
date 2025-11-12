@@ -2,6 +2,7 @@ import {
   useCallback,
   useRef,
   useState,
+  useEffect,
 } from 'react'
 import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +28,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
+import { useEmbeddedChatbotContext } from '../../embedded-chatbot/context'
 
 type ChatInputAreaProps = {
   botName?: string
@@ -42,6 +44,7 @@ type ChatInputAreaProps = {
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  prepopulatedQuery?: string
 }
 const ChatInputArea = ({
   botName,
@@ -57,6 +60,7 @@ const ChatInputArea = ({
   theme,
   isResponding,
   disabled,
+  prepopulatedQuery,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -68,6 +72,7 @@ const ChatInputArea = ({
     handleTextareaResize,
     isMultipleLine,
   } = useTextAreaHeight()
+  const { isInactive } = useEmbeddedChatbotContext()
   const [query, setQuery] = useState('')
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
@@ -83,6 +88,15 @@ const ChatInputArea = ({
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+
+  useEffect(() => {
+    if (prepopulatedQuery) setQuery(prepopulatedQuery)
+  }, [prepopulatedQuery])
+
+  useEffect(() => {
+    handleTextareaResize()
+  }, [query])
+
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -159,6 +173,7 @@ const ChatInputArea = ({
   const operation = (
     <Operation
       ref={holdSpaceRef}
+      disabled={isInactive}
       fileConfig={visionConfig}
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
@@ -190,13 +205,13 @@ const ChatInputArea = ({
                 {query}
               </div>
               <Textarea
+                disabled={isInactive}
                 ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
+                  'body-lg-regular w-full bg-transparent p-1 leading-6 text-text-primary outline-none resize-none',
                 )}
-                placeholder={t('common.chat.inputPlaceholder', { botName }) || ''}
+                placeholder={isInactive ? 'Dayang is offline. Refresh to chat again' : t('common.chat.inputPlaceholder') || ''}
                 autoFocus
-                minRows={1}
                 onResize={handleTextareaResize}
                 value={query}
                 onChange={(e) => {
@@ -232,7 +247,7 @@ const ChatInputArea = ({
           )
         }
       </div>
-      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
+      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={true} onFeatureBarClick={onFeatureBarClick} />}
     </>
   )
 }

@@ -1,6 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n-config/language'
+import type { LanguagesSupported } from '@/i18n/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type {
   RerankingModeEnum,
@@ -8,6 +8,13 @@ import type {
 } from '@/models/datasets'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { AccessMode } from '@/models/access-control'
+
+export enum errorType {
+  unauthorized='unauthorized',
+  notFound='notFound',
+  internalServerError='internalServerError',
+  others='others'
+}
 
 export enum Theme {
   light = 'light',
@@ -29,6 +36,11 @@ export enum ProviderType {
 export enum AppType {
   chat = 'chat',
   completion = 'completion',
+}
+
+export enum AivieAppType {
+  'Dayang' = 'Dayang',
+  'other' = 'Bot',
 }
 
 export enum ModelModeType {
@@ -362,6 +374,7 @@ export type App = {
   }
   /** access control */
   access_mode: AccessMode
+  accessible: boolean
   max_active_requests?: number | null
 }
 

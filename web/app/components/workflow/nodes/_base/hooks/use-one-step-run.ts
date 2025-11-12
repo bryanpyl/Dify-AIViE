@@ -27,6 +27,7 @@ import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
+import ButtonResponseDefault from '@/app/components/workflow/nodes/button-response/default'
 import LoopDefault from '@/app/components/workflow/nodes/loop/default'
 import { ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
@@ -45,6 +46,7 @@ const { checkValid: checkAssignerValid } = Assigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
+const { checkValid: checkButtonResponseValid } = ButtonResponseDefault 
 const { checkValid: checkLoopValid } = LoopDefault
 import {
   useStoreApi,
@@ -69,6 +71,7 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
+  [BlockEnum.ButtonResponse]: checkButtonResponseValid,
 } as any
 
 export type Params<T> = {

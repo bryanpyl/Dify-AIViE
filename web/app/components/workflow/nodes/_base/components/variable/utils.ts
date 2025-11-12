@@ -41,6 +41,7 @@ import type { Field as StructField } from '@/app/components/workflow/nodes/llm/t
 import type { RAGPipelineVariable } from '@/models/pipeline'
 
 import {
+  BUTTON_RESPONSE_STRUCT,
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -59,6 +60,7 @@ import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import { ButtonResponseNodeType } from '../../../button-response/types'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -569,6 +571,11 @@ const formatItem = (
           type: (data as ListFilterNodeType).item_var_type,
         },
       ]
+      break
+    }
+
+    case BlockEnum.ButtonResponse:{
+      res.vars=BUTTON_RESPONSE_STRUCT
       break
     }
 
@@ -1400,6 +1407,13 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
 
+    case BlockEnum.ButtonResponse: {
+      res = (data as ButtonResponseNodeType).variables?.map((v) => {
+        return v.value_selector
+      })
+      break
+    }
+
     case BlockEnum.Agent: {
       const payload = data as AgentNodeType
       const valueSelectors: ValueSelector[] = []
@@ -1829,6 +1843,17 @@ export const updateNodeVars = (
           payload.variable = newVarSelector
         break
       }
+      case BlockEnum.ButtonResponse:{
+        const payload = data as ButtonResponseNodeType
+        if (payload.variables){
+          payload.variables = payload.variables.map((v)=>{
+            if (v.value_selector.join('.')===oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
     }
   })
   return newNode
@@ -1998,6 +2023,11 @@ export const getNodeOutputVars = (
       res.push([id, 'result'])
       res.push([id, 'first_record'])
       res.push([id, 'last_record'])
+      break
+    }
+
+    case BlockEnum.ButtonResponse:{
+      res.push([id,'result'])
       break
     }
   }

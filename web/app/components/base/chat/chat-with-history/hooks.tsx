@@ -21,6 +21,9 @@ import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   delConversation,
+  fetchAppInfo,
+  fetchAppMeta,
+  fetchAppParams,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -35,7 +38,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n/i18n-config/i18next-config'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -52,6 +55,7 @@ function getFormattedChatList(messages: any[]) {
       isAnswer: false,
       message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: item.parent_message_id || undefined,
+      timestamp: item.created_at,
     })
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     newChatList.push({
@@ -63,6 +67,7 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
+      timestamp: item.updated_at,
     })
   })
   return newChatList
@@ -322,6 +327,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         name: t('share.chat.newChatDefaultName'),
         inputs: {},
         introduction: '',
+        created_at: 0,
       })
     }
     return data

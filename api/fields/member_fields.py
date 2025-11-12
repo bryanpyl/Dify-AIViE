@@ -42,3 +42,27 @@ account_with_role_fields = {
 }
 
 account_with_role_list_fields = {"accounts": fields.List(fields.Nested(account_with_role_fields))}
+
+account_partial_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "avatar": fields.String,
+    "avatar_url": AvatarUrlField,
+    "email": fields.String,
+    "last_login_at": TimestampField,
+    "last_active_at": TimestampField,
+    "created_at": TimestampField,
+    "role_id": fields.String,
+    "role_name": fields.String,
+    "group_id": fields.String,
+    "group_name": fields.String,
+    "status": fields.String,
+}
+
+account_pagination_fields = {
+    "page": fields.Integer,
+    "limit": fields.Integer(attribute="per_page"),
+    "total": fields.Integer,
+    "has_more": fields.Boolean(attribute="has_next"),
+    "data": fields.List(fields.Nested(account_partial_fields), attribute="items"),
+}

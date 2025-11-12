@@ -11,6 +11,8 @@ import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
+import 'react-easy-crop/react-easy-crop.css';
+
 export type OnImageInput = {
   (isCropped: true, tempUrl: string, croppedAreaPixels: Area, fileName: string): void
   (isCropped: false, file: File): void
@@ -85,6 +87,7 @@ const ImageInput: FC<UploaderProps> = ({
         onCropChange={setCrop}
         onCropComplete={onCropComplete}
         onZoomChange={setZoom}
+        disableAutomaticStylesInjection={true}
       />
     )
   }

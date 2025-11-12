@@ -37,6 +37,7 @@ import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-meta
 import StatusItem from './status-item'
 import Operations from './operations'
 import { DatasourceType } from '@/models/pipeline'
+import { usePermissionCheck } from '@/context/permission-context'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -85,6 +86,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
+  const { permissions } = usePermissionCheck()
   const router = useRouter()
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
   const chunkingMode = datasetConfig?.doc_form
@@ -206,12 +208,24 @@ const DocumentList: FC<IDocumentListProps> = ({
     return localDocs.some(doc => selectedIds.includes(doc.id))
   }, [localDocs, selectedIds])
 
+  // const onSelectedAll = useCallback(() => {
+  //   if (isAllSelected)
+  //     onSelectedIdChange([])
+  //   else
+  //     onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
+  // }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
+
   const onSelectedAll = useCallback(() => {
-    if (isAllSelected)
-      onSelectedIdChange([])
-    else
-      onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
-  }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
+    const currentAllDocIds = localDocs.map(doc => doc.id)
+    const nextSelectedIds = selectedIds.filter(id => !currentAllDocIds.includes(id))
+  
+    if (selectedIds.some(id => currentAllDocIds.includes(id))) {
+      onSelectedIdChange(nextSelectedIds)
+    } else {
+      onSelectedIdChange([...nextSelectedIds, ...currentAllDocIds])
+    }
+  }, [localDocs, onSelectedIdChange, selectedIds])
+
   const { mutateAsync: archiveDocument } = useDocumentArchive()
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
@@ -286,7 +300,7 @@ const DocumentList: FC<IDocumentListProps> = ({
             <tr>
               <td className='w-12'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                  {embeddingAvailable && (
+                  {(permissions.knowledgeDocumentManagement.edit || permissions.knowledgeDocumentManagement.delete) && (
                     <Checkbox
                       className='mr-2 shrink-0'
                       checked={isAllSelected}
@@ -320,23 +334,30 @@ const DocumentList: FC<IDocumentListProps> = ({
               const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
               return <tr
                 key={doc.id}
-                className={'h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'}
+                className={cn(
+                'border-b border-divider-subtle h-8',
+                permissions.knowledgeDocumentManagement.view ? 'hover:bg-background-default-hover cursor-pointer' : 'cursor-default'
+                )}
                 onClick={() => {
-                  router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+                  if (!permissions.knowledgeDocumentManagement.view) return
+                    router.push(`/datasets/${datasetId}/documents/${doc.id}`)
                 }}>
                 <td className='text-left align-middle text-xs text-text-tertiary'>
                   <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      className='mr-2 shrink-0'
-                      checked={selectedIds.includes(doc.id)}
-                      onCheck={() => {
-                        onSelectedIdChange(
-                          selectedIds.includes(doc.id)
-                            ? selectedIds.filter(id => id !== doc.id)
-                            : [...selectedIds, doc.id],
-                        )
-                      }}
-                    />
+                    {(permissions.knowledgeDocumentManagement.edit || permissions.knowledgeDocumentManagement.delete) && (
+                      <Checkbox
+                        className='mr-2 shrink-0'
+                        checked={selectedIds.includes(doc.id)}
+                        onCheck={() => {
+                          onSelectedIdChange(
+                            selectedIds.includes(doc.id)
+                              ? selectedIds.filter(id => id !== doc.id)
+                              : [...selectedIds, doc.id],
+                          )
+                        }}
+                      />
+                    )}
+                     {/* {doc.position} */}
                     {index + 1}
                   </div>
                 </td>
@@ -380,26 +401,30 @@ const DocumentList: FC<IDocumentListProps> = ({
                         <RiGlobalLine className='mr-1.5 size-4' />
                       )}
                     </div>
-                    <Tooltip
-                      popupContent={doc.name}
-                    >
-                      <span className='grow-1 truncate text-sm'>{doc.name}</span>
-                    </Tooltip>
-                    <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
+                    {permissions.knowledgeDocumentManagement.edit && (
+                      <>
                       <Tooltip
-                        popupContent={t('datasetDocuments.list.table.rename')}
+                        popupContent={doc.name}
                       >
-                        <div
-                          className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleShowRenameModal(doc)
-                          }}
-                        >
-                          <RiEditLine className='h-4 w-4 text-text-tertiary' />
-                        </div>
+                        <span className='grow-1 truncate text-sm'>{doc.name}</span>
                       </Tooltip>
-                    </div>
+                      <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
+                        <Tooltip
+                          popupContent={t('datasetDocuments.list.table.rename')}
+                        >
+                          <div
+                            className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleShowRenameModal(doc)
+                            }}
+                          >
+                            <RiEditLine className='h-4 w-4 text-text-tertiary' />
+                          </div>
+                        </Tooltip>
+                      </div>
+                      </>
+                    )}
                   </div>
                 </td>
                 <td>

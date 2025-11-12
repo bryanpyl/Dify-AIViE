@@ -11,7 +11,7 @@ import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderReq
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getLanguage } from '@/i18n/i18n-config/language'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
@@ -44,7 +44,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 
 type Props = {
@@ -66,7 +66,7 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isSystemRole } = usePermissionCheck()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
@@ -286,7 +286,7 @@ const ProviderDetail = ({
               <Button
                 className={cn('my-3 w-[183px] shrink-0')}
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
-                disabled={!isCurrentWorkspaceManager}
+                disabled={!isSystemRole}
               >
                 <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
               </Button>
@@ -309,7 +309,7 @@ const ProviderDetail = ({
                           if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                             showSettingAuthModal()
                         }}
-                        disabled={!isCurrentWorkspaceManager}
+                        disabled={!isSystemRole}
                       >
                         <Indicator className='mr-2' color={'green'} />
                         {t('tools.auth.authorized')}
@@ -331,7 +331,7 @@ const ProviderDetail = ({
                         if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                           showSettingAuthModal()
                       }}
-                      disabled={!isCurrentWorkspaceManager}
+                      disabled={!isSystemRole}
                     >
                       {t('tools.auth.unauthorized')}
                     </Button>

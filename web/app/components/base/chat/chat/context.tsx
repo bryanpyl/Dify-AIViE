@@ -5,6 +5,7 @@ import { createContext, useContext } from 'use-context-selector'
 import type { ChatProps } from './index'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
+  | 'operationAction'
   | 'isResponding'
   | 'chatList'
   | 'showPromptLog'
@@ -27,6 +28,7 @@ type ChatContextProviderProps = {
 } & ChatContextValue
 
 export const ChatContextProvider = ({
+  operationAction,
   children,
   config,
   isResponding,
@@ -43,6 +45,7 @@ export const ChatContextProvider = ({
 }: ChatContextProviderProps) => {
   return (
     <ChatContext.Provider value={{
+      operationAction,
       config,
       isResponding,
       chatList: chatList || [],

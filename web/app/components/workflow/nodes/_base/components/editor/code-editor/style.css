@@ -14,3 +14,89 @@
 .monaco-editor-overlaymessage {
   display: none !important;
 }
+
+.code-editor-container {
+  width: 100%;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  background-color: transparent;
+  position: relative;
+}
+
+.code-scroll-area {
+  display: flex;
+  align-items: flex-start;
+}
+
+.line-numbers {
+  padding: 12px 6px;
+  background: transparent;
+  color: #888;
+  text-align: right;
+  user-select: none;
+  line-height: 18px;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.line-number {
+  height: 18px;
+}
+
+.editor-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 1em;
+  width: 100%;
+}
+
+.code-highlight-overlay,
+.code-textarea,
+.code-mirror-measure {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 18px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.code-highlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.code-textarea {
+  position: relative;
+  background-color: transparent;
+  color: #1e1e1e;
+  border: none;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  z-index: 1;
+  min-height: 1em;
+}
+
+.placeholder-text {
+  position: absolute;
+  top: 12px;
+  left: 40px;
+  color: #aaa;
+  pointer-events: none;
+}
+
+.code-mirror-measure {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+

@@ -5,6 +5,8 @@ const translation = {
     appUnknownError: 'App is unavailable',
   },
   chat: {
+    thinking:'is thinking right now...',
+    offline:'is now offline. Refresh to chat again',
     newChat: 'Start New chat',
     newChatTip: 'Already in a new chat',
     chatSettingsTitle: 'New chat setup',

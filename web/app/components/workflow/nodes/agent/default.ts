@@ -8,7 +8,7 @@ const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.Agent,
 })
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/i18n-config'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   metaData,

@@ -24,6 +24,13 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
       return acc
 
     const val = attrs[key]
+
+    // Preserve aria-* and data-* attributes
+    if (/^(aria|data)-/.test(key)) {
+      acc[key] = val
+      return acc
+    }
+
     key = key.replace(/([-]\w)/g, (g: string) => g[1].toUpperCase())
     key = key.replace(/([:]\w)/g, (g: string) => g[1].toUpperCase())
 

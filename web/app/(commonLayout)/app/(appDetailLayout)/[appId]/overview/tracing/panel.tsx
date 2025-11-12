@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   RiArrowDownDoubleLine,
   RiEqualizer2Line,
@@ -18,19 +18,33 @@ import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
 import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
 import Loading from '@/app/components/base/loading'
 import Divider from '@/app/components/base/divider'
 
 const I18N_PREFIX = 'app.tracing'
+
+const Title = ({
+  className,
+}: {
+  className?: string
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className={cn(className, 'flex items-center text-lg font-semibold text-gray-900')}>
+      {t('common.appMenus.overview')}
+    </div>
+  )
+}
 
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const readOnly = !isCurrentWorkspaceEditor
+  const { isSystemRole } = usePermissionCheck()
+  const readOnly = !isSystemRole
 
   const [isLoaded, {
     setTrue: setLoaded,
@@ -181,9 +195,14 @@ const Panel: FC = () => {
     })()
   }, [])
 
-  if (!isLoaded) {
+  const [controlShowPopup, setControlShowPopup] = useState<number>(0)
+  const showPopup = useCallback(() => {
+    setControlShowPopup(Date.now())
+  }, [setControlShowPopup])
+  if (!isLoaded && isSystemRole) {
     return (
-      <div className='mb-3 flex items-center justify-between'>
+      <div className='flex items-center justify-between mb-3'>
+        <Title className='h-[41px]' />
         <div className='w-[200px]'>
           <Loading />
         </div>
@@ -192,80 +211,87 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('flex items-center justify-between')}>
-      {!inUseTracingProvider && (
-        <ConfigButton
-          appId={appId}
-          readOnly={readOnly}
-          hasConfigured={false}
-          enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
-          onChooseProvider={handleChooseProvider}
-          arizeConfig={arizeConfig}
-          phoenixConfig={phoenixConfig}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
-          aliyunConfig={aliyunConfig}
-          onConfigUpdated={handleTracingConfigUpdated}
-          onConfigRemoved={handleTracingConfigRemoved}
-        >
-          <div
-            className={cn(
-              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
-            )}
-          >
-            <TracingIcon size='md' />
-            <div className='system-sm-semibold mx-2 text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
-            <div className='rounded-md p-1'>
-              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
-            </div>
-            <Divider type='vertical' className='h-3.5' />
-            <div className='rounded-md p-1'>
-              <RiArrowDownDoubleLine className='h-4 w-4 text-text-tertiary' />
-            </div>
-          </div>
-        </ConfigButton>
-      )}
-      {hasConfiguredTracing && (
-        <ConfigButton
-          appId={appId}
-          readOnly={readOnly}
-          hasConfigured
-          enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
-          onChooseProvider={handleChooseProvider}
-          arizeConfig={arizeConfig}
-          phoenixConfig={phoenixConfig}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
-          aliyunConfig={aliyunConfig}
-          onConfigUpdated={handleTracingConfigUpdated}
-          onConfigRemoved={handleTracingConfigRemoved}
-        >
-          <div
-            className={cn(
-              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
-            )}
-          >
-            <div className='ml-4 mr-1 flex items-center'>
-              <Indicator color={enabled ? 'green' : 'gray'} />
-              <div className='system-xs-semibold-uppercase ml-1.5 text-text-tertiary'>
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+    <div className={cn('mb-3 flex items-center justify-between')}>
+      <Title className='h-[41px]' />
+      {isSystemRole && (
+        <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs cursor-pointer hover:bg-gray-100' onClick={showPopup}>
+          {!inUseTracingProvider && (
+            <ConfigButton
+              appId={appId}
+              readOnly={readOnly}
+              hasConfigured={false}
+              enabled={enabled}
+              onStatusChange={handleTracingEnabledChange}
+              chosenProvider={inUseTracingProvider}
+              onChooseProvider={handleChooseProvider}
+              arizeConfig={arizeConfig}
+              phoenixConfig={phoenixConfig}
+              langSmithConfig={langSmithConfig}
+              langFuseConfig={langFuseConfig}
+              opikConfig={opikConfig}
+              weaveConfig={weaveConfig}
+              aliyunConfig={aliyunConfig}
+              onConfigUpdated={handleTracingConfigUpdated}
+              onConfigRemoved={handleTracingConfigRemoved}
+              >
+              <div
+                className={cn(
+                  'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+                )}
+              >
+                <TracingIcon size='md' />
+                  <div className='system-sm-semibold mx-2 text-text-secondary'>
+                    {t(`${I18N_PREFIX}.title`)}
+                  </div>
+                <div className='rounded-md p-1'>
+                  <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                </div>
+                <Divider type='vertical' className='h-3.5' />
+                  <div className='rounded-md p-1'>
+                    <RiArrowDownDoubleLine className='h-4 w-4 text-text-tertiary' />
+                  </div>
               </div>
+            </ConfigButton>
+          )}
+           {hasConfiguredTracing && (
+          <ConfigButton
+            appId={appId}
+            readOnly={readOnly}
+            hasConfigured
+            enabled={enabled}
+            onStatusChange={handleTracingEnabledChange}
+            chosenProvider={inUseTracingProvider}
+            onChooseProvider={handleChooseProvider}
+            arizeConfig={arizeConfig}
+            phoenixConfig={phoenixConfig}
+            langSmithConfig={langSmithConfig}
+            langFuseConfig={langFuseConfig}
+            opikConfig={opikConfig}
+            weaveConfig={weaveConfig}
+            aliyunConfig={aliyunConfig}
+            onConfigUpdated={handleTracingConfigUpdated}
+            onConfigRemoved={handleTracingConfigRemoved}
+          >
+            <div
+              className={cn(
+                'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              )}
+            >
+              <div className='ml-4 mr-1 flex items-center'>
+                <Indicator color={enabled ? 'green' : 'gray'} />
+                <div className='system-xs-semibold-uppercase ml-1.5 text-text-tertiary'>
+                  {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+                </div>
+              </div>
+              {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
+              <div className='ml-2 rounded-md p-1'>
+                <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+              </div>
+              <Divider type='vertical' className='h-3.5' />
             </div>
-            {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
-            <div className='ml-2 rounded-md p-1'>
-              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
-            </div>
-            <Divider type='vertical' className='h-3.5' />
-          </div>
-        </ConfigButton>
+          </ConfigButton>
+        )}
+        </div>
       )}
     </div>
   )

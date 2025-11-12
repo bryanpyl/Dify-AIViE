@@ -22,7 +22,7 @@ import {
   getProcessedInputs,
   processOpeningStatement,
 } from './utils'
-import { TransferMethod } from '@/types/app'
+import { AivieAppType, TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
 import type { Annotation } from '@/models/log'
@@ -45,6 +45,7 @@ type SendCallback = {
 }
 
 export const useChat = (
+  chatAppTitle?: string | null,
   config?: ChatConfig,
   formSettings?: {
     inputs: Inputs
@@ -61,6 +62,7 @@ export const useChat = (
   const conversationId = useRef('')
   const hasStopResponded = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
+  const [isResponseGenerated, setIsResponseGenerated] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
@@ -97,6 +99,7 @@ export const useChat = (
           isAnswer: true,
           isOpeningStatement: true,
           suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
+          timestamp: config.created_at ? config.created_at : undefined,
         })
       }
     }
@@ -154,6 +157,10 @@ export const useChat = (
     isRespondingRef.current = isResponding
   }, [])
 
+  const handleResponseGenerated = useCallback((isResponseGenerated:boolean)=>{
+    setIsResponseGenerated(isResponseGenerated)
+  }, [])
+
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
     handleResponding(false)
@@ -166,6 +173,7 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback((cb?: any) => {
+    console.log('handleRestart called with:', cb)
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
@@ -239,6 +247,7 @@ export const useChat = (
       isAnswer: false,
       message_files: data.files,
       parentMessageId: data.parent_message_id,
+      timestamp: Math.floor(Date.now()/1000),
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -261,6 +270,7 @@ export const useChat = (
     // answer
     const responseItem: ChatItemInTree = {
       id: placeholderAnswerId,
+      hold_response_content: '',
       content: '',
       agent_thoughts: [],
       message_files: [],
@@ -271,6 +281,7 @@ export const useChat = (
 
     handleResponding(true)
     hasStopResponded.current = false
+    if (isResponseGenerated) handleResponseGenerated(false)
 
     const { query, files, inputs, ...restData } = data
     const bodyParams = {
@@ -318,7 +329,18 @@ export const useChat = (
         isPublicAPI,
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           if (!isAgentMode) {
-            responseItem.content = responseItem.content + message
+            if (chatAppTitle?.includes(AivieAppType.Dayang)){
+              if (responseItem.nodeResponse?.includes('Hold Response')) {
+                responseItem.hold_response_content = responseItem.hold_response_content + message
+                responseItem.content = responseItem.hold_response_content
+              }
+              else{
+                responseItem.content = responseItem.content + message
+              }
+            }
+            else{
+              responseItem.content = responseItem.content + message
+            }
           }
           else {
             const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
@@ -406,6 +428,7 @@ export const useChat = (
               setSuggestQuestions([])
             }
           }
+          handleResponseGenerated(true)
         },
         onFile(file) {
           const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
@@ -456,6 +479,9 @@ export const useChat = (
               id: messageEnd.metadata.annotation_reply.id,
               authorName: messageEnd.metadata.annotation_reply.account.name,
             })
+
+            responseItem.timestamp = Math.floor(Date.now()/1000)
+
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -467,7 +493,8 @@ export const useChat = (
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
-
+          responseItem.timestamp = Math.floor(Date.now()/1000)
+          
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -540,6 +567,14 @@ export const useChat = (
           })
         },
         onNodeStarted: ({ data: nodeStartedData }) => {
+          if (nodeStartedData.title?.includes('Final Response') && nodeStartedData.node_type==='llm'){
+            responseItem.content=''
+          }
+
+          if (nodeStartedData.node_type==='answer'||nodeStartedData.node_type==='llm'){
+            responseItem.nodeResponse=nodeStartedData.title
+          }
+          
           if (nodeStartedData.iteration_id)
             return
 
@@ -628,6 +663,7 @@ export const useChat = (
     updateChatTreeNode,
     notify,
     handleResponding,
+    handleResponseGenerated,
     formatTime,
     params.token,
     params.appId,
@@ -699,6 +735,7 @@ export const useChat = (
     conversationId: conversationId.current,
     isResponding,
     setIsResponding,
+    isResponseGenerated,
     handleSend,
     suggestedQuestions,
     handleRestart,

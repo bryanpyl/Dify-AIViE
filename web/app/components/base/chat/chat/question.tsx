@@ -46,6 +46,7 @@ const Question: FC<QuestionProps> = ({
   const {
     content,
     message_files,
+    timestamp
   } = item
 
   const {
@@ -98,7 +99,7 @@ const Question: FC<QuestionProps> = ({
 
   return (
     <div className='mb-2 flex justify-end last:mb-0'>
-      <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
+      <div className={cn('group relative mr-4 flex flex-col max-w-full items-end overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
@@ -160,6 +161,15 @@ const Question: FC<QuestionProps> = ({
             switchSibling={handleSwitchSibling}
           />}
         </div>
+        <p className='mt-2 system-2xs-semibold-uppercase text-text-tertiary'>
+          {timestamp
+            ? new Date(timestamp * 1000).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })
+            : ''}
+        </p>
         <div className='mt-1 h-[18px]' />
       </div>
       <div className='h-10 w-10 shrink-0'>

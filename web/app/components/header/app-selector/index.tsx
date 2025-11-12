@@ -8,7 +8,6 @@ import Indicator from '../indicator'
 import type { AppDetailResponse } from '@/models/app'
 import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
-import { useAppContext } from '@/context/app-context'
 import { noop } from 'lodash-es'
 
 type IAppSelectorProps = {
@@ -18,7 +17,6 @@ type IAppSelectorProps = {
 
 export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
   const router = useRouter()
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { t } = useTranslation()
 
@@ -66,7 +64,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 appItems.map((app: AppDetailResponse) => (
                   <MenuItem key={app.id}>
                     <div className={itemClassName} onClick={() =>
-                      router.push(`/app/${app.id}/${isCurrentWorkspaceEditor ? 'configuration' : 'overview'}`)
+                      router.push(`/app/${app.id}/configuration`)
                     }>
                       <div className='relative mr-2 h-6 w-6 rounded-[6px] bg-[#D5F5F6]'>
                         <AppIcon size='tiny' />
@@ -80,7 +78,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 ))
               }
             </div>)}
-            {isCurrentWorkspaceEditor && <MenuItem>
+            <MenuItem>
               <div className='p-1' onClick={() => setShowNewAppDialog(true)}>
                 <div
                   className='flex h-12 cursor-pointer items-center rounded-lg hover:bg-gray-100'
@@ -98,7 +96,6 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 </div>
               </div>
             </MenuItem>
-            }
           </MenuItems>
         </Transition>
       </Menu>

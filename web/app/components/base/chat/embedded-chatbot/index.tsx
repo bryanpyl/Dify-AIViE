@@ -1,28 +1,40 @@
 'use client'
 import {
   useEffect,
+  useState,
+  useRef,
 } from 'react'
+import { useAsyncEffect } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
 } from './context'
-import { useEmbeddedChatbot } from './hooks'
+import { useEmbeddedChatbot, activityStatus } from './hooks'
+import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import { CssTransform } from './theme/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
+import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { DEFAULT_CHATBOT_ACTIVE_TIMEOUT_MS } from '@/config'
+import { AivieAppType } from '@/types/app'
 
 const Chatbot = () => {
   const {
+    avatarName,
+    avatarBgColor,
+    isInactive,
+    handleActivityStatus,
     isMobile,
     allowResetChat,
     appData,
@@ -30,9 +42,19 @@ const Chatbot = () => {
     chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
+    operationAction,
+    chatKey,
+    appInitialized,
+    showConfigPanelBeforeChat,
+    aivieAppType,
+    appInfoError,
+    appInfoLoading,
+    appPrevChatList,
+    handleShowConfigPanelBeforeChat,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length) && appInitialized
 
   const customConfig = appData?.custom_config
   const site = appData?.site
@@ -45,8 +67,76 @@ const Chatbot = () => {
 
   useDocumentTitle(site?.title || 'Chat')
 
+  // User Activity watcher: 
+  // const [isActive, setIsActive] = useState(true)
+  const chatbotRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout|null>(null);
+  const isActiveRef = useRef(isInactive);
+
+  // updating the ref value as soon as the isActive is updated 
+  useEffect(()=>{
+    isActiveRef.current = !isInactive;
+  },[!isInactive])
+
+  const resetTimer = ()=>{
+    if (timeoutRef.current){
+      clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = setTimeout(()=>{
+      handleActivityStatus(activityStatus.INACTIVE)
+      // setIsActive(false)
+    },DEFAULT_CHATBOT_ACTIVE_TIMEOUT_MS)
+  }
+
+  const handleActivity= ()=>{
+    // if we need to reactivate the active status, run this 
+    // if (!isActiveRef.current){
+    //   // setIsActive(true)
+    //   handleActivityStatus(activityStatus.ACTIVE)
+    // }
+
+    // else, this is enough
+    resetTimer()
+  }
+
+
+  useEffect(()=>{
+    // if (aivieAppType===AivieAppType.Dayang) {
+    //   handleShowConfigPanelBeforeChat(false)
+    // }
+
+    resetTimer()
+    const node = chatbotRef.current
+    if (node){
+      node.addEventListener('click',handleActivity)
+      node.addEventListener('keydown',handleActivity)
+    }
+
+    return ()=>{
+      if (node){
+        node.removeEventListener('click',handleActivity)
+        node.removeEventListener('keydown',handleActivity)
+      }
+      if (timeoutRef.current){
+        clearTimeout(timeoutRef.current)
+      }
+    } 
+  },[appInitialized])
+
+  if (appInfoLoading) {
+    return (
+      <Loading type='app' />
+    )
+  }
+
+  if (appInfoError) {
+    return (
+      <AppUnavailable />
+    )
+  }
+
   return (
-    <div className='relative'>
+    <div className='relative' ref={chatbotRef}>
       <div
         className={cn(
           'flex flex-col rounded-2xl border border-components-panel-border-subtle',
@@ -55,18 +145,27 @@ const Chatbot = () => {
         style={isMobile ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '')) : {}}
       >
         <Header
+          avatarName={avatarName}
           isMobile={isMobile}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
-          customerIcon={isDify() ? difyIcon : ''}
+          // customerIcon={isDify() ? difyIcon : ''}
+          appIcon={site?.icon_url}
+          appIconBgColor={avatarBgColor}
           theme={themeBuilder?.theme}
           onCreateNewChat={handleNewConversation}
+          activeStatus= {!isInactive}
         />
         <div className={cn('flex grow flex-col overflow-y-auto', isMobile && '!h-[calc(100vh_-_3rem)] rounded-2xl bg-chatbot-bg')}>
-          {appChatListDataLoading && (
+          {(showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length) && (
+            <div className={cn('flex w-full items-center justify-center h-full tablet:px-4', isMobile && 'px-4')}>
+              <ConfigPanel />
+            </div>
+          )}
+          {appChatListDataLoading && !chatReady &&(
             <Loading type='app' />
           )}
-          {!appChatListDataLoading && (
+          {chatReady && !appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
           )}
         </div>
@@ -132,6 +231,18 @@ const EmbeddedChatbotWrapper = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    operationAction,
+    avatarName,
+    avatarBgColor,
+    chatKey,
+    appInitialized,
+    aivieAppType,
+    isInactive, 
+    handleActivityStatus,
+    appInfoError,
+    appInfoLoading,
+    showConfigPanelBeforeChat,
+    handleShowConfigPanelBeforeChat,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
@@ -169,12 +280,52 @@ const EmbeddedChatbotWrapper = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    operationAction,
+    avatarName,
+    avatarBgColor,
+    chatKey,
+    appInitialized,
+    aivieAppType,
+    isInactive, 
+    handleActivityStatus,
+    appInfoError,
+    appInfoLoading,
+    showConfigPanelBeforeChat,
+    handleShowConfigPanelBeforeChat,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>
 }
 
 const EmbeddedChatbot = () => {
+  const [initialized, setInitialized] = useState(false)
+  const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
+  const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
+
+  useAsyncEffect(async () => {
+    if (!initialized) {
+      try {
+        await checkOrSetAccessToken()
+      }
+      catch (e: any) {
+        if (e.status === 404) {
+          setAppUnavailable(true)
+        }
+        else {
+          setIsUnknownReason(true)
+          setAppUnavailable(true)
+        }
+      }
+      setInitialized(true)
+    }
+  }, [])
+
+  if (!initialized)
+    return null
+
+  if (appUnavailable)
+    return <AppUnavailable isUnknownReason={isUnknownReason} />
+
   return <EmbeddedChatbotWrapper />
 }
 

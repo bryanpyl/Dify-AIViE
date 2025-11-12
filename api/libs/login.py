@@ -5,10 +5,12 @@ from typing import Union, cast
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore
 from werkzeug.local import LocalProxy
+from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from models.account import Account
-from models.model import EndUser
+from extensions.ext_database import db
+from models.account import Account, Tenant, TenantAccountJoin
+from models.model import EndUser, Role, RoleAccountJoin
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
@@ -55,10 +57,48 @@ def login_required(func: Callable[P, R]):
 
     @wraps(func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        auth_header = request.headers.get("Authorization")
+        if dify_config.ADMIN_API_KEY_ENABLE:
+            if auth_header:
+                if " " not in auth_header:
+                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+                auth_scheme, auth_token = auth_header.split(None, 1)
+                auth_scheme = auth_scheme.lower()
+                if auth_scheme != "bearer":
+                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+
+                admin_api_key = dify_config.ADMIN_API_KEY
+                if admin_api_key:
+                    if admin_api_key == auth_token:
+                        workspace_id = request.headers.get("X-WORKSPACE-ID")
+                        if workspace_id:
+                            tenant_account_join = (
+                                db.session.query(Tenant, TenantAccountJoin)
+                                .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                                .join(RoleAccountJoin, RoleAccountJoin.account_id == TenantAccountJoin.account_id)
+                                .join(Role, Role.id == RoleAccountJoin.role_id)
+                                .filter(Tenant.id == workspace_id)
+                                .filter(Role.name == "Superadministrator")
+                                .one_or_none()
+                            )
+                            if tenant_account_join:
+                                tenant, ta = tenant_account_join
+                                account = db.session.query(Account).filter_by(id=ta.account_id).first()
+                                # Login admin
+                                if account:
+                                    account.current_tenant = tenant
+                                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
+        
+        # flask 1.x compatibility
+        # current_app.ensure_sync is only available in Flask >= 2.0
+        if callable(getattr(current_app, "ensure_sync", None)):
+            return current_app.ensure_sync(func)(*args, **kwargs)
+        
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view

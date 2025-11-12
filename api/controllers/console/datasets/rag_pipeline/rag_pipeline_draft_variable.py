@@ -104,7 +104,8 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_rag_pipeline
     def wrapper(*args, **kwargs):
-        if not isinstance(current_user, Account) or not current_user.is_editor:
+        # if not isinstance(current_user, Account) or not current_user.is_editor:
+        if not isinstance(current_user, Account):
             raise Forbidden()
         return f(*args, **kwargs)
 

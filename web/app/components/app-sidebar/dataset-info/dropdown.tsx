@@ -16,6 +16,7 @@ import RenameDatasetModal from '../../datasets/rename-modal'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import Confirm from '../../base/confirm'
 import { useRouter } from 'next/navigation'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type DropDownProps = {
   expand: boolean
@@ -30,8 +31,8 @@ const DropDown = ({
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
+  const { permissions, isSystemRole } = usePermissionCheck()
+  // const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
 
   const handleTrigger = useCallback(() => {
@@ -122,7 +123,8 @@ const DropDown = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[60]'>
         <Menu
-          showDelete={!isCurrentWorkspaceDatasetOperator}
+          // showDelete={!isCurrentWorkspaceDatasetOperator}
+          showDelete={!isSystemRole}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}

@@ -16,6 +16,7 @@ import type {
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams, getProcessedUserVariablesFromUrlParams } from '../utils'
+import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   fetchAppInfo,
@@ -31,13 +32,20 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n/i18n-config/i18next-config'
 import { InputVarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+
+import { AivieAppType, TransferMethod } from '@/types/app'
+import { OperationAction } from '../chat/answer/operation'
+
+export enum activityStatus {
+  ACTIVE='Active',
+  INACTIVE='Inactive'
+}
+
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -49,6 +57,7 @@ function getFormattedChatList(messages: any[]) {
       isAnswer: false,
       message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: item.parent_message_id || undefined,
+      timestamp: item.created_at,
     })
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     newChatList.push({
@@ -60,6 +69,7 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: `question-${item.id}`,
+      timestamp: item.created_at,
     })
   })
   return newChatList
@@ -75,19 +85,80 @@ export const useEmbeddedChatbot = () => {
     enabled: systemFeatures.webapp_auth.enabled,
   })
 
+  const handleActivityStatus = (value:activityStatus)=>{
+    if (value===activityStatus.ACTIVE){
+      setIsInactive(false)
+    }
+    else setIsInactive(true)
+  }
+
   const appData = useMemo(() => {
     return appInfo
   }, [appInfo])
+
+  const aivieAppType = useMemo(()=>{
+    if (appData?.site.title.includes(AivieAppType.Dayang)) return AivieAppType.Dayang
+    else return AivieAppType.other
+  },[appData])
+
+
   const appId = useMemo(() => appData?.app_id, [appData])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
+  const [appInitialized, setAppInitialized] = useState(false)
+  const [isInactive,setIsInactive] = useState(false)
+  const [chatKey, setChatKey] = useState(null)
+  const [customShowConfigPanelBeforeChat, setCustomShowConfigPanelBeforeChat] = useState<boolean|null>(null)
+  const [avatarName, setAvatarName] = useState<string>(AivieAppType.other)
+  const [avatarBgColor, setAvatarBgColor] = useState<string>("#FFFFFF")
+  const [operationAction, setOperationAction] = useState<OperationAction[]|null>([])
+  
   useEffect(() => {
     getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
       setUserId(user_id)
       setConversationId(conversation_id)
     })
   }, [])
+
+  useEffect(()=>{
+    window.parent.postMessage('IFRAME_LOADED','*')
+    window.addEventListener('message',(event)=>{
+      // const key='chatKey'
+      const chatConfig = 'chatConfig'
+      const chatWidgetConfig = 'chatWidgetConfig'
+      if (event.data[chatConfig]!= null){
+        const chatConfigData = event.data[chatConfig]
+        if (chatConfigData.key){
+          setChatKey(chatConfigData.key)
+        }
+        if (typeof chatConfigData.showConfigPanel=='boolean'){
+          if(!chatConfigData.showConfigPanel){
+            setCustomShowConfigPanelBeforeChat(false)
+          }
+          else{
+            setCustomShowConfigPanelBeforeChat(true)
+          }
+        }
+      }
+      if (event.data[chatWidgetConfig]!=null){
+        const chatWidgetConfigData = event.data[chatWidgetConfig]
+        if (chatWidgetConfigData.avatar_name){
+          setAvatarName(chatWidgetConfigData.avatar_name)
+        }
+        if (chatWidgetConfigData.avatar_icon_bgcolor){
+          setAvatarBgColor(chatWidgetConfigData.avatar_icon_bgcolor)
+        }
+      }
+
+    })
+
+    setOperationAction([
+      OperationAction.copy, 
+      OperationAction.feedback
+    ])
+  },[])
+
 
   useEffect(() => {
     const setLanguageFromParams = async () => {
@@ -137,13 +208,23 @@ export const useEmbeddedChatbot = () => {
     }
   }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
+  const [showConfigPanelBeforeChat, setShowConfigPanelBeforeChat] = useState(true)
+
+  const handleShowConfigPanelBeforeChat=(value:boolean)=>{
+    setShowConfigPanelBeforeChat(value)
+  }
+
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
-    if (currentConversationId === newConversationId)
-      return ''
-
+    if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
+
+  useEffect(()=>{
+    if (appData && aivieAppType){
+      setAppInitialized(true)
+    }
+  },[appData, aivieAppType, chatShouldReloadKey, appInitialized])
 
   const { data: appParams } = useSWR(['appParams', isInstalledApp, appId], () => fetchAppParams(isInstalledApp, appId))
   const { data: appMeta } = useSWR(['appMeta', isInstalledApp, appId], () => fetchAppMeta(isInstalledApp, appId))
@@ -154,9 +235,11 @@ export const useEmbeddedChatbot = () => {
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(
-    () => (currentConversationId && appChatListData?.data.length)
+    () => 
+      (currentConversationId && appChatListData?.data.length)
       ? buildChatItemTree(getFormattedChatList(appChatListData.data))
-      : [],
+      : 
+      [],
     [appChatListData, currentConversationId],
   )
 
@@ -173,6 +256,9 @@ export const useEmbeddedChatbot = () => {
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
+    if (newInputs.key&&!chatKey){
+      setChatKey(newInputs.key)
+    }
   }, [])
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
@@ -244,6 +330,26 @@ export const useEmbeddedChatbot = () => {
     })
   }, [initInputs, appParams])
 
+  useEffect(()=>{
+    // Check if chatflow requires any input 
+    // IF no inputs is required, dont show config panel at all
+    if (!inputsForms||inputsForms.length===0){
+      handleShowConfigPanelBeforeChat(false)
+    }
+    // IF inputs are required
+    else
+    {
+      // First: Check if cliuent specify to show configPanel in the embedded js
+      if (!customShowConfigPanelBeforeChat && customShowConfigPanelBeforeChat ===false){
+        handleShowConfigPanelBeforeChat(false)
+      }
+      // ELSE: If client did not specify (null) OR specify to SHOW the config panel, proceed to display the config panel
+      else{
+        handleShowConfigPanelBeforeChat(true)
+      }
+    } 
+  },[inputsForms, customShowConfigPanelBeforeChat])
+
   const allInputsHidden = useMemo(() => {
     return inputsForms.length > 0 && inputsForms.every(item => item.hide === true)
   }, [inputsForms])
@@ -261,10 +367,15 @@ export const useEmbeddedChatbot = () => {
     const conversationInputs: Record<string, any> = {}
 
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      if (item.variable==='key' && chatKey){
+        conversationInputs['key'] = chatKey
+      }
+      else {
+        conversationInputs[item.variable] = item.default || null
+      }
     })
     handleNewConversationInputsChange(conversationInputs)
-  }, [handleNewConversationInputsChange, inputsForms])
+  }, [handleNewConversationInputsChange, inputsForms, , chatKey])
 
   const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
@@ -281,6 +392,7 @@ export const useEmbeddedChatbot = () => {
         name: t('share.chat.newChatDefaultName'),
         inputs: {},
         introduction: '',
+        created_at: 0,
       })
     }
     return data
@@ -290,9 +402,9 @@ export const useEmbeddedChatbot = () => {
     if (newConversation) {
       setOriginConversationList(produce((draft) => {
         const index = draft.findIndex(item => item.id === newConversation.id)
-
-        if (index > -1)
+        if (index > -1){
           draft[index] = newConversation
+          }
         else
           draft.unshift(newConversation)
       }))
@@ -362,25 +474,50 @@ export const useEmbeddedChatbot = () => {
   }, [inputsForms, notify, t, allInputsHidden])
   const handleStartChat = useCallback((callback?: any) => {
     if (checkInputsRequired()) {
+      setShowConfigPanelBeforeChat(false)
       setShowNewConversationItemInList(true)
       callback?.()
     }
   }, [setShowNewConversationItemInList, checkInputsRequired])
+  
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: noop })
+  
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
-    if (conversationId)
+
+    if (conversationId === '' && !checkInputsRequired(true)){
+      setShowConfigPanelBeforeChat(true)
       setClearChatList(false)
-  }, [handleConversationIdInfoChange, setClearChatList])
+    }
+    else
+      setShowConfigPanelBeforeChat(false)
+  }, [handleConversationIdInfoChange, setClearChatList,  setShowConfigPanelBeforeChat, checkInputsRequired])
+  
   const handleNewConversation = useCallback(async () => {
+    handleActivityStatus(activityStatus.ACTIVE)
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
+    setNewConversationId('')
+    setAppInitialized(false)
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+
+    if (showNewConversationItemInList) {
+      handleChangeConversation('')
+    }
+    else if (currentConversationId) {
+      handleConversationIdInfoChange('')
+      // setShowConfigPanelBeforeChat(true)
+      setShowNewConversationItemInList(true)
+      if (chatKey){
+        handleNewConversationInputsChange({"key":chatKey})
+      }
+      else handleNewConversationInputsChange({})
+    }
+  }, [handleChangeConversation, currentConversationId, handleConversationIdInfoChange, setShowConfigPanelBeforeChat, setShowNewConversationItemInList, showNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -395,6 +532,14 @@ export const useEmbeddedChatbot = () => {
   }, [isInstalledApp, appId, t, notify])
 
   return {
+    operationAction,
+    avatarName,
+    avatarBgColor,
+    chatKey,
+    appInitialized,
+    aivieAppType,
+    isInactive, 
+    handleActivityStatus,
     appInfoError,
     appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
     userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
@@ -436,5 +581,8 @@ export const useEmbeddedChatbot = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    showConfigPanelBeforeChat,
+    setShowConfigPanelBeforeChat,
+    handleShowConfigPanelBeforeChat,
   }
 }

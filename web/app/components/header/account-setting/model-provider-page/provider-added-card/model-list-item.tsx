@@ -1,7 +1,7 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
-import type { ModelItem, ModelProvider } from '../declarations'
+import type { CustomConfigurationModelFixedFields, ModelItem, ModelProvider } from '../declarations'
 import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
@@ -15,19 +15,21 @@ import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { ConfigModel } from '../model-auth'
 import Badge from '@/app/components/base/badge'
+import { usePermissionCheck } from '@/context/permission-context'
 
 export type ModelListItemProps = {
   model: ModelItem
   provider: ModelProvider
   isConfigurable: boolean
+  onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
 
-const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing }: ModelListItemProps) => {
+const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoadBalancing }: ModelListItemProps) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
@@ -71,7 +73,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
           </Badge>
         )}
         {
-          (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
+          (isSystemRole && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loadBalancingEnabled={model.load_balancing_enabled}
@@ -91,11 +93,11 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
                 <Switch defaultValue={false} disabled size='md' />
               </Tooltip>
             )
-            : (isCurrentWorkspaceManager && (
+            : (isSystemRole && (
               <Switch
                 className='ml-2'
                 defaultValue={model?.status === ModelStatusEnum.active}
-                disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+                disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) || !permissions.settingsModel.edit}
                 size='md'
                 onChange={onEnablingStateChange}
               />

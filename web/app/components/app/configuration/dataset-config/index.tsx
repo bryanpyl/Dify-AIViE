@@ -37,7 +37,9 @@ import {
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
-const DatasetConfig: FC = () => {
+const DatasetConfig: FC<{readOnly:boolean}> = (
+  {readOnly=false}
+) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const {
@@ -255,8 +257,10 @@ const DatasetConfig: FC = () => {
       title={t('appDebug.feature.dataSet.title')}
       headerRight={
         <div className='flex items-center gap-1'>
-          {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
-          <OperationBtn type="add" onClick={showSelectDataSet} />
+          {!isAgent && <ParamsConfig disabled={!hasData||readOnly} selectedDatasets={dataSet} />}
+          {!readOnly && (
+            <OperationBtn type="add" onClick={showSelectDataSet} />
+          )}
         </div>
       }
       hasHeaderBottomBorder={!hasData}
@@ -267,6 +271,7 @@ const DatasetConfig: FC = () => {
           <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
             {formattedDataset.map(item => (
               <CardItem
+                readonly={readOnly}
                 key={item.id}
                 config={item}
                 onRemove={onRemove}

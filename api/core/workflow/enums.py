@@ -1,7 +1,7 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 
 
-class NodeState(Enum):
+class NodeState(StrEnum):
     """State of a node or edge during workflow execution."""
 
     UNKNOWN = "unknown"
@@ -58,6 +58,7 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+    BUTTON_RESPONSE = "button-response"
 
 
 class NodeExecutionType(StrEnum):

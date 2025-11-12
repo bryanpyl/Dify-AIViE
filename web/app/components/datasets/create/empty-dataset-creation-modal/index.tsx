@@ -12,6 +12,9 @@ import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useAppContext } from '@/context/app-context'
+import { usePermissionCheck } from '@/context/permission-context'
+import { AddGroupBindings } from '@/service/account'
 
 type IProps = {
   show: boolean
@@ -26,6 +29,8 @@ const EmptyDatasetCreationModal = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const router = useRouter()
+  const { groupId } = useAppContext()
+  const { isSystemRole } = usePermissionCheck()
   const invalidDatasetList = useInvalidDatasetList()
 
   const submit = async () => {
@@ -39,6 +44,14 @@ const EmptyDatasetCreationModal = ({
     }
     try {
       const dataset = await createEmptyDataset({ name: inputValue })
+
+      if (!isSystemRole) {
+        await AddGroupBindings({
+          group_id: groupId,
+          target_id: [dataset.id],
+          type: "knowledge",
+        })
+      }
       invalidDatasetList()
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)

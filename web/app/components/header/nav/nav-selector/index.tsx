@@ -13,10 +13,10 @@ import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { AiText, BubbleTextMod, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
-import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import type { AppIconType } from '@/types/app'
+import { usePermissionCheck } from '@/context/permission-context'
 
 export type NavItem = {
   id: string
@@ -40,7 +40,7 @@ export type INavSelectorProps = {
 const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions } = usePermissionCheck()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
@@ -121,7 +121,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                 ))
               }
             </div>
-            {!isApp && isCurrentWorkspaceEditor && (
+            {!isApp && permissions.knowledgeManagement.add && (
               <MenuItem as="div" className='w-full p-1'>
                 <div onClick={() => onCreate('')} className={cn(
                   'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover ',
@@ -133,7 +133,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                 </div>
               </MenuItem>
             )}
-            {isApp && isCurrentWorkspaceEditor && (
+            {isApp && permissions.applicationManagement.add && (
               <Menu as="div" className="relative h-full w-full">
                 {({ open }) => (
                   <>

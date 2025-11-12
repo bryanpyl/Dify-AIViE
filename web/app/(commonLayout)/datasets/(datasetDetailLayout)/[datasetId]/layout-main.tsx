@@ -11,6 +11,8 @@ import {
   RiFileTextLine,
   RiFocus2Fill,
   RiFocus2Line,
+  RiBox3Line,
+  RiShapeLine
 } from '@remixicon/react'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
@@ -24,6 +26,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -37,17 +40,20 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   } = props
   const { t } = useTranslation()
   const pathname = usePathname()
+  const isDocuments = pathname.endsWith('/documents')
+  const isSandbox = pathname.endsWith('/sandbox')
+  const isSettings = pathname.endsWith('/settings')
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
   const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
-
+  
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === 'workflow-canvas-maximize')
       setHideHeader(v.payload)
   })
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { permissions, isSystemRole, handleNoViewPermission } = usePermissionCheck()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -68,6 +74,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const navigation = useMemo(() => {
     const baseNavigation = [
+      ...(permissions.knowledgeSandbox.view ?
+        [{ 
+          name: t('common.datasetMenus.sandbox'), 
+          href: `/datasets/${datasetId}/sandbox`, 
+          icon: RiBox3Line, 
+          selectedIcon: RiShapeLine }] : []
+      ),
       {
         name: t('common.datasetMenus.hitTesting'),
         href: `/datasets/${datasetId}/hitTesting`,
@@ -75,16 +88,18 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         selectedIcon: RiFocus2Fill,
         disabled: isButtonDisabledWithPipeline,
       },
-      {
-        name: t('common.datasetMenus.settings'),
-        href: `/datasets/${datasetId}/settings`,
-        icon: RiEqualizer2Line,
-        selectedIcon: RiEqualizer2Fill,
-        disabled: false,
-      },
+      ...(permissions.knowledgeGeneralSettings.view || permissions.knowledgeAdvancedSettings.view ?
+        [{ 
+          name: t('common.datasetMenus.settings'), 
+          href: `/datasets/${datasetId}/settings`, 
+          icon: RiEqualizer2Line,
+          selectedIcon: RiEqualizer2Fill,
+          disabled: false }] : []
+          
+      ),
     ]
-
-    if (datasetRes?.provider !== 'external') {
+    
+    if (datasetRes?.provider !== 'external' && permissions.knowledgeDocumentManagement.view) {
       baseNavigation.unshift({
         name: t('common.datasetMenus.pipeline'),
         href: `/datasets/${datasetId}/pipeline`,
@@ -114,6 +129,22 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
 
+  if (
+    (isDocuments && !permissions.knowledgeDocumentManagement.view) ||
+    (isSandbox && !permissions.knowledgeSandbox.view) ||
+    (isSettings &&
+      !permissions.knowledgeGeneralSettings.view &&
+      !permissions.knowledgeAdvancedSettings.view)
+  ) {
+    return (
+      <>
+        {
+          handleNoViewPermission()
+        }
+      </>
+    )
+  }
+
   if (!datasetRes && !error)
     return <Loading type='app' />
 
@@ -133,7 +164,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           <AppSideBar
             navigation={navigation}
             extraInfo={
-              !isCurrentWorkspaceDatasetOperator
+              !isSystemRole
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }

@@ -8,6 +8,7 @@ import { useSegmentListContext } from './index'
 import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type ISegmentListProps = {
   isLoading: boolean
@@ -50,6 +51,8 @@ const SegmentList = (
   const currSegment = useSegmentListContext(s => s.currSegment)
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
+  const { permissions } = usePermissionCheck()
+
   const Skeleton = useMemo(() => {
     return (docForm === ChunkingMode.parentChild && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
   }, [docForm, parentMode])
@@ -77,12 +80,14 @@ const SegmentList = (
             || currChildChunk?.childChunkInfo?.segment_id === segItem.id
           return (
             <div key={segItem.id} className='flex items-start gap-x-2'>
-              <Checkbox
-                key={`${segItem.id}-checkbox`}
-                className='mt-3.5 shrink-0'
-                checked={selectedSegmentIds.includes(segItem.id)}
-                onCheck={() => onSelected(segItem.id)}
-              />
+              {(permissions.knowledgeDocumentManagement.edit || permissions.knowledgeDocumentManagement.delete) && (
+                <Checkbox
+                  key={`${segItem.id}-checkbox`}
+                  className='shrink-0 mt-3.5'
+                  checked={selectedSegmentIds.includes(segItem.id)}
+                  onCheck={() => onSelected(segItem.id)}
+                />
+              )}
               <div className='min-w-0 grow'>
                 <SegmentCard
                   key={`${segItem.id}-card`}

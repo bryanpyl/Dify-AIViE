@@ -280,8 +280,8 @@ class DatasetDocumentListApi(Resource):
             raise NotFound("Dataset not found.")
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -371,8 +371,8 @@ class DatasetInitApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -832,8 +832,8 @@ class DocumentProcessingApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         if action == "pause":
             if document.indexing_status != "indexing":
@@ -887,8 +887,8 @@ class DocumentMetadataApi(DocumentResource):
         doc_metadata = req_data.get("doc_metadata")
 
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         if doc_type is None or doc_metadata is None:
             raise ValueError("Both doc_type and doc_metadata must be provided.")
@@ -930,8 +930,8 @@ class DocumentStatusApi(DocumentResource):
             raise NotFound("Dataset not found.")
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
 
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
@@ -1070,8 +1070,8 @@ class DocumentRenameApi(DocumentResource):
     @marshal_with(document_fields)
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
+        # if not current_user.is_dataset_editor:
+        #     raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_operator_permission(current_user, dataset)
         parser = reqparse.RequestParser()

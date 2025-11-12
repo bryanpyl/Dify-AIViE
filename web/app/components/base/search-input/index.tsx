@@ -3,8 +3,10 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type SearchInputProps = {
+  showClearIcon?: boolean,
   placeholder?: string
   className?: string
   value: string
@@ -13,6 +15,7 @@ type SearchInputProps = {
 }
 
 const SearchInput: FC<SearchInputProps> = ({
+  showClearIcon = true, 
   placeholder,
   className,
   value,
@@ -59,7 +62,7 @@ const SearchInput: FC<SearchInputProps> = ({
         onBlur={() => setFocus(false)}
         autoComplete="off"
       />
-      {value && (
+      {(value && showClearIcon) && (
         <div
           className='group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center'
           onClick={() => {

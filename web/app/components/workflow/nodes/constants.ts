@@ -42,6 +42,8 @@ import DataSourceNode from './data-source/node'
 import DataSourcePanel from './data-source/panel'
 import KnowledgeBaseNode from './knowledge-base/node'
 import KnowledgeBasePanel from './knowledge-base/panel'
+import ButtonResponseNode from './button-response/node'
+import ButtonResponsePanel from './button-response/panel'
 import { TransferMethod } from '@/types/app'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
@@ -67,6 +69,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentNode,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
+  [BlockEnum.ButtonResponse]: ButtonResponseNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -92,6 +95,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentPanel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
+  [BlockEnum.ButtonResponse] : ButtonResponsePanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'

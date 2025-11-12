@@ -15,64 +15,64 @@ from .engine import db
 from .types import StringUUID
 
 
-class TenantAccountRole(enum.StrEnum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    EDITOR = "editor"
-    NORMAL = "normal"
-    DATASET_OPERATOR = "dataset_operator"
+# class TenantAccountRole(enum.StrEnum):
+#     OWNER = "owner"
+#     ADMIN = "admin"
+#     EDITOR = "editor"
+#     NORMAL = "normal"
+#     DATASET_OPERATOR = "dataset_operator"
 
-    @staticmethod
-    def is_valid_role(role: str) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
+#     @staticmethod
+#     def is_valid_role(role: str) -> bool:
+#         if not role:
+#             return False
+#         return role in {
+#             TenantAccountRole.OWNER,
+#             TenantAccountRole.ADMIN,
+#             TenantAccountRole.EDITOR,
+#             TenantAccountRole.NORMAL,
+#             TenantAccountRole.DATASET_OPERATOR,
+#         }
 
-    @staticmethod
-    def is_privileged_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+#     @staticmethod
+#     def is_privileged_role(role: Optional["TenantAccountRole"]) -> bool:
+#         if not role:
+#             return False
+#         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
-    @staticmethod
-    def is_admin_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role == TenantAccountRole.ADMIN
+#     @staticmethod
+#     def is_admin_role(role: Optional["TenantAccountRole"]) -> bool:
+#         if not role:
+#             return False
+#         return role == TenantAccountRole.ADMIN
 
-    @staticmethod
-    def is_non_owner_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
+#     @staticmethod
+#     def is_non_owner_role(role: Optional["TenantAccountRole"]) -> bool:
+#         if not role:
+#             return False
+#         return role in {
+#             TenantAccountRole.ADMIN,
+#             TenantAccountRole.EDITOR,
+#             TenantAccountRole.NORMAL,
+#             TenantAccountRole.DATASET_OPERATOR,
+#         }
 
-    @staticmethod
-    def is_editing_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+#     @staticmethod
+#     def is_editing_role(role: Optional["TenantAccountRole"]) -> bool:
+#         if not role:
+#             return False
+#         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
-    @staticmethod
-    def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
+#     @staticmethod
+#     def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
+#         if not role:
+#             return False
+#         return role in {
+#             TenantAccountRole.OWNER,
+#             TenantAccountRole.ADMIN,
+#             TenantAccountRole.EDITOR,
+#             TenantAccountRole.DATASET_OPERATOR,
+#         }
 
 
 class AccountStatus(enum.StrEnum):
@@ -106,7 +106,7 @@ class Account(UserMixin, Base):
 
     @reconstructor
     def init_on_load(self):
-        self.role: TenantAccountRole | None = None
+        # self.role: TenantAccountRole | None = None
         self._current_tenant: Tenant | None = None
 
     @property
@@ -118,50 +118,81 @@ class Account(UserMixin, Base):
         return self._current_tenant
 
     @current_tenant.setter
-    def current_tenant(self, tenant: "Tenant"):
-        with Session(db.engine, expire_on_commit=False) as session:
-            tenant_join_query = select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
-            )
-            tenant_join = session.scalar(tenant_join_query)
-            tenant_query = select(Tenant).where(Tenant.id == tenant.id)
-            # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
-            # access to it after the session has been closed.
-            # This prevents `DetachedInstanceError` when accessing the tenant outside
-            # the session's lifecycle.
-            # (The `tenant` argument is typically loaded by `db.session` without the
-            # `expire_on_commit=False` flag, meaning its lifetime is tied to the web
-            # request's lifecycle.)
-            tenant_reloaded = session.scalars(tenant_query).one()
+    def current_tenant(self, value: "Tenant"):
+        from models.model import Role, RoleAccountJoin
+        tenant = value
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        if ta:
+            role_account = db.session.query(RoleAccountJoin).filter_by(
+                tenant_id=tenant.id,
+                account_id=self.id
+            ).first()
 
-        if tenant_join:
-            self.role = TenantAccountRole(tenant_join.role)
-            self._current_tenant = tenant_reloaded
-            return
-        self._current_tenant = None
+            if role_account:
+                role = db.session.query(Role).filter_by(
+                    tenant_id=tenant.id,
+                    id=role_account.role_id
+                ).first()
+
+                if role:
+                    tenant.current_role = role.name
+                else:
+                    tenant.current_role = None
+            else:
+                tenant.current_role = None
+        else:
+            # FIXME: fix the type error later, because the type is important maybe cause some bugs
+            tenant = None  # type: ignore
+        self._current_tenant = tenant
+
+        self._current_tenant = tenant
 
     @property
     def current_tenant_id(self) -> str | None:
         return self._current_tenant.id if self._current_tenant else None
 
-    def set_tenant_id(self, tenant_id: str):
-        query = (
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.account_id == self.id)
-        )
-        with Session(db.engine, expire_on_commit=False) as session:
-            tenant_account_join = session.execute(query).first()
-            if not tenant_account_join:
-                return
-            tenant, join = tenant_account_join
-            self.role = TenantAccountRole(join.role)
-            self._current_tenant = tenant
+    @current_tenant_id.setter
+    def current_tenant_id(self, value: str):
+        from models.model import Role, RoleAccountJoin
+        try:
+            tenant_account_join = (
+                db.session.query(Tenant, TenantAccountJoin)
+                .filter(Tenant.id == value)
+                .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                .filter(TenantAccountJoin.account_id == self.id)
+                .one_or_none()
+            )
+
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+
+                role_account = db.session.query(RoleAccountJoin).filter_by(
+                    tenant_id=tenant.id,
+                    account_id=self.id
+                ).first()
+
+                if role_account:
+                    role = db.session.query(Role).filter_by(
+                        tenant_id=tenant.id,
+                        id=role_account.role_id
+                    ).first()
+
+                    if role:
+                        tenant.current_role = role.name
+                    else:
+                        tenant.current_role = None
+                else:
+                    tenant.current_role = None
+            else:
+                tenant = None
+        except:
+            tenant = None
+
+        self._current_tenant = tenant
 
     @property
     def current_role(self):
-        return self.role
+        return self._current_tenant.current_role
 
     def get_status(self) -> AccountStatus:
         status_str = self.status
@@ -178,47 +209,95 @@ class Account(UserMixin, Base):
             return db.session.query(Account).where(Account.id == account_integrate.account_id).one_or_none()
         return None
 
+    @property
+    def is_superadmin(self):
+        from models.model import Role, RoleAccountJoin, DefaultRoles
+        role_account = db.session.query(RoleAccountJoin).filter_by(
+            tenant_id=self._current_tenant.id,
+            account_id=self.id
+        ).first()
+
+        if not role_account:
+            return False
+
+        role = db.session.query(Role).filter_by(
+            tenant_id=self._current_tenant.id,
+            id=role_account.role_id
+        ).first()
+
+        if not role:
+            return False
+
+        return DefaultRoles.is_superadmin_role(role.name)
+    
+    @property
+    def can_update_dataset_settings(self):
+        from models.model import RoleAccountJoin, RolePermissionJoin, Permission
+
+        if not self._current_tenant:
+            return False
+
+        role_account = db.session.query(RoleAccountJoin).filter_by(tenant_id=self._current_tenant.id, account_id=self.id).first()
+
+        if not role_account:
+            return False
+
+        role_permissions = db.session.query(RolePermissionJoin).filter_by(tenant_id=self._current_tenant.id, role_id=role_account.role_id).all()
+
+        if not role_permissions:
+            return False
+
+        permission_ids = [rp.permission_id for rp in role_permissions]
+
+        has_permission = db.session.query(Permission).filter(
+            Permission.id.in_(permission_ids),
+            Permission.code.in_(["edit-general-settings", "edit-advanced-settings"])
+        ).first()
+
+        return bool(has_permission)
+
+
     # check current_user.current_tenant.current_role in ['admin', 'owner']
-    @property
-    def is_admin_or_owner(self):
-        return TenantAccountRole.is_privileged_role(self.role)
+    # @property
+    # def is_admin_or_owner(self):
+    #     return TenantAccountRole.is_privileged_role(self.role)
 
-    @property
-    def is_admin(self):
-        return TenantAccountRole.is_admin_role(self.role)
+    # @property
+    # def is_admin(self):
+    #     return TenantAccountRole.is_admin_role(self.role)
 
-    @property
-    @deprecated("Use has_edit_permission instead.")
-    def is_editor(self):
-        """Determines if the account has edit permissions in their current tenant (workspace).
+    # @property
+    # @deprecated("Use has_edit_permission instead.")
+    # def is_editor(self):
+    #     """Determines if the account has edit permissions in their current tenant (workspace).
 
-        This property checks if the current role has editing privileges, which includes:
-        - `OWNER`
-        - `ADMIN`
-        - `EDITOR`
+    #     This property checks if the current role has editing privileges, which includes:
+    #     - `OWNER`
+    #     - `ADMIN`
+    #     - `EDITOR`
 
-        Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
-        """
-        return self.has_edit_permission
+    #     Note: This checks for any role with editing permission, not just the 'EDITOR' role specifically.
+    #     """
+    #     return self.has_edit_permission
 
-    @property
-    def has_edit_permission(self):
-        """Determines if the account has editing permissions in their current tenant (workspace).
+    # @property
+    # def has_edit_permission(self):
+    #     """Determines if the account has editing permissions in their current tenant (workspace).
 
-        This property checks if the current role has editing privileges, which includes:
-        - `OWNER`
-        - `ADMIN`
-        - `EDITOR`
-        """
-        return TenantAccountRole.is_editing_role(self.role)
+    #     This property checks if the current role has editing privileges, which includes:
+    #     - `OWNER`
+    #     - `ADMIN`
+    #     - `EDITOR`
+    #     """
+    #     return TenantAccountRole.is_editing_role(self.role)
 
-    @property
-    def is_dataset_editor(self):
-        return TenantAccountRole.is_dataset_edit_role(self.role)
+    # @property
+    # def is_dataset_editor(self):
+    #     return TenantAccountRole.is_dataset_edit_role(self.role)
 
-    @property
-    def is_dataset_operator(self):
-        return self.role == TenantAccountRole.DATASET_OPERATOR
+    # @property
+    # def is_dataset_operator(self):
+    #     return self.role == TenantAccountRole.DATASET_OPERATOR
 
 
 class TenantStatus(enum.StrEnum):
@@ -240,12 +319,10 @@ class Tenant(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
-        return list(
-            db.session.scalars(
-                select(Account).where(
-                    Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
-                )
-            ).all()
+        return (
+            db.session.query(Account)
+            .filter(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
+            .all()
         )
 
     @property
@@ -270,7 +347,7 @@ class TenantAccountJoin(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
     current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
-    role: Mapped[str] = mapped_column(String(16), server_default="normal")
+    # role: Mapped[str] = mapped_column(String(16), server_default="normal")
     invited_by: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())

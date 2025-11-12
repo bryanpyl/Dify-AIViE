@@ -12,7 +12,8 @@ export type TagSelectorProps = {
   targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'
-  type: 'knowledge' | 'app'
+  type: 'group'
+  subtype: 'app' | 'knowledge' | 'user'
   value: string[]
   selectedTags: Tag[]
   onCacheUpdate: (tags: Tag[]) => void
@@ -25,6 +26,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   isPopover = true,
   position,
   type,
+  subtype,
   value,
   selectedTags,
   onCacheUpdate,
@@ -52,6 +54,7 @@ const TagSelector: FC<TagSelectorProps> = ({
           htmlContent={
             <Panel
               type={type}
+              subtype={subtype}
               targetID={targetID}
               value={value}
               selectedTags={selectedTags}

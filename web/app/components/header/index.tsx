@@ -1,6 +1,8 @@
 'use client'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useBoolean } from 'ahooks'
+import { useSelectedLayoutSegment } from 'next/navigation'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
@@ -19,6 +21,7 @@ import PlanBadge from './plan-badge'
 import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const navClassName = `
   flex items-center relative px-3 h-8 rounded-xl
@@ -27,12 +30,14 @@ const navClassName = `
 `
 
 const Header = () => {
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { permissions, isSystemRole } = usePermissionCheck()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false)
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const selectedSegment = useSelectedLayoutSegment()
   const isFreePlan = plan.type === Plan.sandbox
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
@@ -40,6 +45,24 @@ const Header = () => {
     else
       setShowAccountSettingModal({ payload: 'billing' })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+
+  const [showStudioNav, setShowStudioNav] = useState<boolean>(false)
+  useEffect(()=>{
+    if (
+      permissions.applicationManagement.view || 
+      permissions.applicationOrchestration.view || 
+      permissions.applicationApiService.view || 
+      permissions.applicationLogsAnnotation.view || 
+      permissions.applicationPerformanceMonitoring.view || 
+      permissions.applicationSiteManagement.view
+    )
+      setShowStudioNav(true)
+  },[permissions])
+
+  useEffect(() => {
+    hideNavMenu()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSegment])
 
   if (isMobile) {
     return (
@@ -69,10 +92,11 @@ const Header = () => {
           </div>
         </div>
         <div className='my-1 flex items-center justify-center space-x-1'>
-          {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-          {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-          {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-          {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+          {isSystemRole && <ExploreNav className={navClassName} />}
+          {showStudioNav && <AppNav />}
+          {(permissions.knowledgeManagement.view && showStudioNav) && <DatasetNav />}
+          {isSystemRole && <ToolsNav className={navClassName} />}
+
         </div>
       </div>
     )
@@ -97,10 +121,10 @@ const Header = () => {
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
       <div className='flex items-center space-x-2'>
-        {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-        {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-        {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-        {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+        {isSystemRole && <ExploreNav className={navClassName} />}
+        {showStudioNav && <AppNav />}
+        {(permissions.knowledgeManagement.view && showStudioNav) && <DatasetNav />}
+        {isSystemRole && <ToolsNav className={navClassName} />}
       </div>
       <div className='flex min-w-0 flex-[1] items-center justify-end pl-2 pr-3 min-[1280px]:pl-3'>
         <EnvNav />

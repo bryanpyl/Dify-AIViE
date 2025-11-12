@@ -13,11 +13,14 @@ import type { NavItem } from '../nav/nav-selector'
 import { basePath } from '@/utils/var'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
 import type { DataSet } from '@/models/datasets'
+import { usePermissionCheck } from '@/context/permission-context'
 
 const DatasetNav = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { datasetId } = useParams()
+  const { permissions } = usePermissionCheck()
+  const canView = permissions.knowledgeManagement.view
   const { data: currentDataset } = useDatasetDetail(datasetId as string)
   const {
     data: datasetList,
@@ -88,6 +91,7 @@ const DatasetNav = () => {
       activeSegment='datasets'
       link='/datasets'
       curNav={curNav}
+      canView={canView}
       navigationItems={navigationItems}
       createText={t('common.menus.newDataset')}
       onCreate={() => router.push(createRoute)}

@@ -7,6 +7,8 @@ import Tooltip from '@/app/components/base/tooltip'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import cn from '@/utils/classnames'
+import { usePermissionCheck } from '@/context/permission-context'
+
 
 type Props = {
   isChatMode?: boolean
@@ -21,6 +23,7 @@ const FeatureBar = ({
   disabled,
   onFeatureBarClick,
 }: Props) => {
+  const { permissions } = usePermissionCheck()
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
   const [modalOpen, setModalOpen] = useState(false)
@@ -132,10 +135,10 @@ const FeatureBar = ({
             )}
           </div>
           <div className='body-xs-regular grow text-text-tertiary'>{t('appDebug.feature.bar.enableText')}</div>
-          <Button className='shrink-0' variant='ghost-accent' size='small' onClick={() => onFeatureBarClick?.(true)}>
+          {permissions.applicationManagement.edit && <Button className='shrink-0' variant='ghost-accent' size='small' onClick={() => onFeatureBarClick?.(true)}>
             <div className='mx-1'>{t('appDebug.feature.bar.manage')}</div>
-            <RiArrowRightLine className='h-3.5 w-3.5 text-text-accent' />
-          </Button>
+            <RiArrowRightLine className='w-3.5 h-3.5 text-text-accent' />
+          </Button>}
         </div>
       )}
     </div>

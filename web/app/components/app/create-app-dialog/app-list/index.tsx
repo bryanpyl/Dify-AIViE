@@ -22,12 +22,12 @@ import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
 import type { AppMode } from '@/types/app'
 import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { usePermissionCheck } from '@/context/permission-context'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -44,7 +44,7 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { permissions } = usePermissionCheck()
   const { push } = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = AppCategories.RECOMMENDED
@@ -151,7 +151,7 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
+      getRedirection(permissions, { id: app.app_id!, mode }, push)
     }
     catch {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

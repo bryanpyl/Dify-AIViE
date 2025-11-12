@@ -9,8 +9,8 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import cn from '@/utils/classnames'
-import { invitationCheck } from '@/service/common'
-import { LicenseStatus } from '@/types/feature'
+import { getSystemFeatures, invitationCheck } from '@/service/common'
+import { LicenseStatus, defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -26,7 +26,7 @@ const NormalForm = () => {
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isLoading, setIsLoading] = useState(true)
-  const { systemFeatures } = useGlobalPublicStore()
+  const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -50,6 +50,9 @@ const NormalForm = () => {
           message,
         })
       }
+      const features = await getSystemFeatures()
+      const allFeatures = { ...defaultSystemFeatures, ...features }
+      setSystemFeatures(allFeatures)
       setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
       setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))
       updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
@@ -66,6 +69,7 @@ const NormalForm = () => {
     catch (error) {
       console.error(error)
       setAllMethodsAreDisabled(true)
+      setSystemFeatures(defaultSystemFeatures)
     }
     finally { setIsLoading(false) }
   }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, systemFeatures])

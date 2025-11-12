@@ -23,6 +23,7 @@ import {
   QuestionClassifier,
   TemplatingTransform,
   VariableX,
+  ButtonResponse,
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
 import cn from '@/utils/classnames'
@@ -66,6 +67,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.KnowledgeBase]: <KnowledgeBase className={className} />,
     [BlockEnum.DataSource]: <Datasource className={className} />,
     [BlockEnum.DataSourceEmpty]: <></>,
+    [BlockEnum.ButtonResponse]: <ButtonResponse className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -92,6 +94,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
+  [BlockEnum.ButtonResponse]: 'bg-util-colors-pink-pink-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,

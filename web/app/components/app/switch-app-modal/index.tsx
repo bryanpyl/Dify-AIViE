@@ -24,6 +24,8 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { noop } from 'lodash-es'
+import { usePermissionCheck } from '@/context/permission-context'
+import { AddGroupBindings, fetchGroupIdByTarget } from '@/service/account'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -34,12 +36,11 @@ type SwitchAppModalProps = {
 }
 
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClose }: SwitchAppModalProps) => {
+  const { permissions } = usePermissionCheck()
   const { push, replace } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
-
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -63,6 +64,24 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
         icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       })
+
+      // Fetch group binding of the old app
+      const groupIds = await fetchGroupIdByTarget({
+        params: {
+          target_id: appDetail.id,
+          type: "app",
+        },
+      })
+
+      // If old app has a group binding, add it to the new app
+      if (groupIds.length > 0) {
+        await AddGroupBindings({
+          group_id: groupIds[0],
+          target_id: [newAppID],
+          type: "app",
+        })
+      }
+
       if (onSuccess)
         onSuccess()
       if (onClose)
@@ -74,7 +93,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
-        isCurrentWorkspaceEditor,
+        permissions,
         {
           id: newAppID,
           mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
@@ -82,7 +101,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         removeOriginal ? replace : push,
       )
     }
-    catch {
+    catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
@@ -143,7 +162,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             }}
           />}
         </div>
-        {isAppsFull && <AppsFull loc='app-switch' />}
+        {/* {isAppsFull && <AppsFull loc='app-switch' />} */}
         <div className='flex items-center justify-between pt-6'>
           <div className='flex items-center'>
             <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
@@ -151,7 +170,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className='flex items-center'>
             <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-            <Button className='border-red-700' disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('app.switchStart')}</Button>
+            <Button className='border-red-700' variant="warning" onClick={goStart}>{t('app.switchStart')}</Button>
           </div>
         </div>
       </Modal>

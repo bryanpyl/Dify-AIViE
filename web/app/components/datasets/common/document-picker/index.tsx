@@ -92,9 +92,9 @@ const DocumentPicker: FC<Props> = ({
             <div className='flex h-3 items-center space-x-0.5 text-text-tertiary'>
               <TypeIcon className='h-3 w-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isGeneralMode && t('dataset.chunkingMode.general')}
                 {isQAMode && t('dataset.chunkingMode.qa')}
-                {isParentChild && `${t('dataset.chunkingMode.parentChild')} · ${parentModeLabel}`}
+                {isParentChild ? t('datasetDocuments.list.chunkingMode.parentChild') : t('datasetDocuments.list.chunkingMode.general')}
+                {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
               </span>
             </div>
           </div>
